@@ -31,14 +31,24 @@ This repo is a static site — GitHub Pages serves it as-is from the root. Once
 pushed, enable Pages in the repo's Settings → Pages, source = `main` branch,
 `/ (root)`.
 
-To use a custom domain, add a `CNAME` file at the repo root containing the
-domain name, and point DNS at the registrar:
-- Apex domain (`example.com`): A records at GitHub's IPs (`185.199.108.153`,
-  `185.199.109.153`, `185.199.110.153`, `185.199.111.153`).
-- `www` subdomain: CNAME to `<github-username>.github.io`.
+**Custom domain**: `grnmtngames.com` (owned via GoDaddy). The `CNAME` file at
+the repo root already contains it — GitHub just needs matching DNS records set
+at the registrar:
 
-GitHub issues HTTPS automatically once DNS resolves correctly — enable
-"Enforce HTTPS" in the Pages settings once the certificate is ready.
+| Type  | Host  | Value                     |
+|-------|-------|---------------------------|
+| A     | `@`   | `185.199.108.153`         |
+| A     | `@`   | `185.199.109.153`         |
+| A     | `@`   | `185.199.110.153`         |
+| A     | `@`   | `185.199.111.153`         |
+| CNAME | `www` | `<github-username>.github.io` |
+
+(In GoDaddy's DNS Management, `@` means the apex/root domain, `grnmtngames.com`
+itself — add all four A records under that same host.)
+
+GitHub issues HTTPS automatically once DNS resolves correctly (can take a few
+hours to propagate) — enable "Enforce HTTPS" in the Pages settings once the
+certificate is ready.
 
 ## Ads
 
