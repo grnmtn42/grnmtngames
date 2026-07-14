@@ -3310,7 +3310,10 @@ function drawPlayer() {
         let bladeLen = 22 + player.weaponLvl * 2.5;
         let coreColor = '#f8fafc', glow = glowColor;
         if (player.hasAncientSword) { bladeLen += 14; glow = '#a78bfa'; }
-        ctx.shadowColor = glow; ctx.shadowBlur = player.hasAncientSword ? 14 : 9;
+        // The wider translucent rect below already reads as a glow -- shadowBlur would add a
+        // softer edge, but it's dramatically more expensive to render (especially on Firefox,
+        // where canvas shadow blur isn't hardware-accelerated the way it is elsewhere), and
+        // this runs every single frame the player is on screen.
         ctx.fillStyle = glow; ctx.globalAlpha = 0.4;
         ctx.fillRect(handX + 3, handY - 4, bladeLen, 8);
         ctx.globalAlpha = 1;
@@ -3761,7 +3764,8 @@ function drawProjectile(p) {
 
 function drawPlayerProjectile(p) {
     ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(Math.atan2(p.vy, p.vx));
-    ctx.shadowColor = '#22d3ee'; ctx.shadowBlur = 8;
+    // The wide translucent stroke below is the glow -- no shadowBlur needed (and it's slow
+    // enough on Firefox, multiplied across every projectile in flight, to be worth avoiding).
     ctx.strokeStyle = 'rgba(34, 211, 238, 0.45)'; ctx.lineWidth = 4; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(-9, 0); ctx.lineTo(7, 0); ctx.stroke();
     ctx.strokeStyle = '#f0fdff'; ctx.lineWidth = 1.6;
@@ -4555,8 +4559,11 @@ function drawShipWaypoint() {
     ctx.save();
     ctx.translate(ax, ay); ctx.rotate(angle);
     ctx.globalAlpha = pulse;
+    // A larger, softer underlay stands in for shadowBlur's glow -- much cheaper to render
+    // (shadowBlur is notably unaccelerated on Firefox) for a single-arrow, always-on effect.
+    ctx.fillStyle = 'rgba(251,191,36,0.35)';
+    ctx.beginPath(); ctx.moveTo(21, 0); ctx.lineTo(-14, -12); ctx.lineTo(-14, 12); ctx.closePath(); ctx.fill();
     ctx.fillStyle = '#fbbf24';
-    ctx.shadowColor = '#fbbf24'; ctx.shadowBlur = 10;
     ctx.beginPath(); ctx.moveTo(16, 0); ctx.lineTo(-10, -9); ctx.lineTo(-10, 9); ctx.closePath(); ctx.fill();
     ctx.restore();
 }
