@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Green Mountain Games</title>
+<meta name="description" content="Free browser games from Green Mountain Games — no installs, no accounts, just play.">
+
+<!-- Open Graph -->
+<meta property="og:title" content="Green Mountain Games">
+<meta property="og:description" content="Free browser games — no installs, no accounts, just play.">
+<meta property="og:type" content="website">
+
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+        font-family: 'Courier New', monospace;
+        background: #05070a;
+        color: #e2e8f0;
+        min-height: 100vh;
+        background-image:
+            radial-gradient(circle at 20% 20%, rgba(56, 189, 248, 0.06), transparent 40%),
+            radial-gradient(circle at 80% 60%, rgba(74, 222, 128, 0.05), transparent 40%);
+    }
+
+    header {
+        padding: 48px 20px 32px;
+        text-align: center;
+        border-bottom: 1px solid #1e293b;
+    }
+    header h1 {
+        font-size: 32px;
+        letter-spacing: 3px;
+        color: #67e8f9;
+        text-shadow: 0 0 16px rgba(103, 232, 249, 0.5);
+    }
+    header p {
+        margin-top: 10px;
+        color: #7b8c9a;
+        font-size: 14px;
+        letter-spacing: 1px;
+    }
+
+    main {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 40px 20px 60px;
+    }
+
+    .game-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 24px;
+    }
+
+    .game-card {
+        display: flex;
+        flex-direction: column;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid #1e293b;
+        border-radius: 8px;
+        overflow: hidden;
+        transition: border-color 0.2s ease, transform 0.2s ease;
+    }
+    .game-card:hover {
+        border-color: #38bdf8;
+        transform: translateY(-2px);
+    }
+
+    .game-thumb {
+        height: 140px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 48px;
+        background:
+            radial-gradient(circle at 30% 30%, rgba(103, 232, 249, 0.15), transparent 60%),
+            linear-gradient(160deg, #0c1a14 0%, #05080a 100%);
+        border-bottom: 1px solid #1e293b;
+    }
+
+    .game-body {
+        padding: 18px 20px 20px;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+    }
+    .game-body h2 {
+        font-size: 18px;
+        color: #4ade80;
+        letter-spacing: 1px;
+        margin-bottom: 8px;
+    }
+    .game-body p {
+        font-size: 13px;
+        line-height: 1.6;
+        color: #b6c2cc;
+        flex: 1;
+    }
+    .game-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin: 12px 0;
+    }
+    .game-tags span {
+        font-size: 10px;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        color: #7b8c9a;
+        border: 1px solid #313d27;
+        border-radius: 3px;
+        padding: 2px 7px;
+    }
+
+    .play-btn {
+        display: inline-block;
+        margin-top: 4px;
+        text-align: center;
+        background: #0ea5e9;
+        color: #001018;
+        font-weight: bold;
+        text-decoration: none;
+        letter-spacing: 1px;
+        padding: 10px 0;
+        border-radius: 4px;
+        font-size: 13px;
+        transition: background 0.15s ease;
+    }
+    .play-btn:hover { background: #38bdf8; }
+
+    .coming-soon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 220px;
+        color: #4b5b68;
+        font-size: 13px;
+        letter-spacing: 1px;
+        border: 1px dashed #1e293b;
+        border-radius: 8px;
+    }
+
+    footer {
+        text-align: center;
+        padding: 30px 20px 50px;
+        color: #445059;
+        font-size: 11px;
+        letter-spacing: 0.5px;
+    }
+    footer a { color: #7b8c9a; }
+</style>
+</head>
+<body>
+
+<header>
+    <h1>GREEN MOUNTAIN GAMES</h1>
+    <p>Free browser games. No installs, no accounts &mdash; just play.</p>
+</header>
+
+<main>
+    <div class="game-grid">
+        <div class="game-card">
+            <div class="game-thumb">🛸</div>
+            <div class="game-body">
+                <h2>SIGNAL LOST</h2>
+                <p>
+                    Crash-landed on a hostile world with a synthesized psychedelic-western
+                    score, you'll fight across an open frontier, a labyrinthine cave, and a
+                    mountain trail to recover your ship's parts and beat the game &mdash; or
+                    just chase the high score. Permadeath, one run at a time.
+                </p>
+                <div class="game-tags">
+                    <span>Action RPG</span>
+                    <span>Browser</span>
+                    <span>Mobile-friendly</span>
+                </div>
+                <a class="play-btn" href="games/signal-lost/index.html">PLAY NOW</a>
+            </div>
+        </div>
+
+        <div class="coming-soon">More games coming soon</div>
+    </div>
+</main>
+
+<footer>
+    &copy; <span id="year"></span> Green Mountain Games
+</footer>
+
+<script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+</script>
+
+</body>
+</html>
