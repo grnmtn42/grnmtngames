@@ -2940,7 +2940,7 @@ function submitRunScore() {
 
     if (isGlobalLeaderboardEnabled()) {
         submitGlobalScore(name, entry.score, entry.kills, entry.relics, entry.won).then(ok => {
-            statusEl.innerText = ok ? 'Submitted to the global leaderboard!' : 'Global leaderboard unreachable — saved locally only.';
+            statusEl.innerText = ok ? 'Submitted to the global leaderboard!' : 'Global leaderboard unreachable (your browser or an extension may be blocking it — check ad-blocker/tracker-protection settings) — saved locally only.';
             refreshLeaderboardPanels();
         });
     }
@@ -3186,7 +3186,7 @@ function submitVictoryScore() {
 
     if (isGlobalLeaderboardEnabled()) {
         submitGlobalScore(name, entry.score, entry.kills, entry.relics, entry.won).then(ok => {
-            statusEl.innerText = ok ? 'Submitted to the global leaderboard!' : 'Global leaderboard unreachable — saved locally only.';
+            statusEl.innerText = ok ? 'Submitted to the global leaderboard!' : 'Global leaderboard unreachable (your browser or an extension may be blocking it — check ad-blocker/tracker-protection settings) — saved locally only.';
         });
     }
 }
