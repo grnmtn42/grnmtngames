@@ -9,6 +9,7 @@ serve the repo root locally.
 ```
 /                       landing page (this repo's root index.html)
 /games/signal-lost/     Signal Lost — the first game
+/games/skip-rocks/      Skip Rocks — the second game
 ```
 
 Each game lives in its own folder under `games/` with its own `index.html` and
@@ -65,3 +66,10 @@ A single-file browser RPG: fight your way across an open, fog-of-war frontier
 to the sound of a synthesized psychedelic-western trip-hop score. See its
 [README](games/signal-lost/README.md) for controls, the leaderboard, and
 optional global-leaderboard setup via Supabase.
+
+### [Skip Rocks](games/skip-rocks/)
+
+A quiet counterpart to Signal Lost: skip stones across the water from the
+shoreline to a generative ambient score, chasing your best streak for the
+session. No accounts, no leaderboard, no way to lose — see its
+[README](games/skip-rocks/README.md) for controls.

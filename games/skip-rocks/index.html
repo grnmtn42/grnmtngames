@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Skip Rocks - A Relaxing Stone-Skipping Game</title>
+    <meta name="description" content="Skip stones across a lake from a first-person view. Drag to throw, chase your best skip count, and unwind to zen ambient music across rotating natural scenes. Free browser game, no install required.">
+    <link rel="canonical" href="https://grnmtngames.com/games/skip-rocks/index.html">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="Skip Rocks">
+    <meta property="og:description" content="Skip stones across a lake from a first-person view. Drag to throw, chase your best skip count, and unwind to zen ambient music across rotating natural scenes.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://grnmtngames.com/games/skip-rocks/index.html">
+    <meta property="og:image" content="https://grnmtngames.com/assets/screenshots/skiprocks-dawn.jpg">
+
+    <!-- Twitter/X card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Skip Rocks">
+    <meta name="twitter:description" content="Skip stones across a lake from a first-person view. Drag to throw, chase your best skip count, and unwind to zen ambient music across rotating natural scenes.">
+    <meta name="twitter:image" content="https://grnmtngames.com/assets/screenshots/skiprocks-dawn.jpg">
+
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        html, body {
+            width: 100vw; height: 100vh;
+            overflow: hidden;
+            background: #0c1a1e;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+        }
+        #game-container { position: relative; width: 100%; height: 100%; }
+        canvas {
+            display: block;
+            touch-action: none;
+        }
+
+        /* --- Minimal UI, filled in during the polish pass --- */
+        #hud {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            color: #eef3ea;
+            font-size: 13px;
+            letter-spacing: 0.3px;
+            text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+            line-height: 1.5;
+            pointer-events: none;
+        }
+        #hud .best { color: #f0bd7e; font-weight: 600; }
+
+        #controls-corner {
+            position: absolute;
+            bottom: 16px;
+            right: 16px;
+            display: flex;
+            gap: 8px;
+        }
+        #controls-corner button {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.25);
+            background: rgba(12,26,30,0.55);
+            color: #eef3ea;
+            font-size: 16px;
+            cursor: pointer;
+            backdrop-filter: blur(2px);
+        }
+        #controls-corner button:hover { background: rgba(12,26,30,0.8); }
+
+        #drag-hint {
+            position: absolute;
+            left: 50%;
+            bottom: 26%;
+            transform: translateX(-50%);
+            color: #eef3ea;
+            font-size: 14px;
+            letter-spacing: 0.5px;
+            text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.6s ease;
+        }
+        #drag-hint.show { opacity: 1; }
+
+        body.touch-mode #hud { font-size: 12px; }
+        body.touch-mode #controls-corner button { width: 44px; height: 44px; font-size: 18px; }
+
+        @media (max-width: 480px) {
+            #hud { font-size: 11px; top: 12px; left: 12px; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+    <div id="hud">SKIPS <span id="hud-skips">0</span><br>BEST <span class="best" id="hud-best">0</span></div>
+    <div id="drag-hint">drag to throw</div>
+    <div id="controls-corner">
+        <button id="btn-view" title="Change view">&#8635;</button>
+        <button id="btn-mute" title="Mute">&#128266;</button>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const isTouchDevice = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+    if (isTouchDevice) document.body.classList.add('touch-mode');
+
+    // horizonY/shoreY are the two projection constants everything else (scene
+    // layout, later the stone's perspective projection) is built on. They're
+    // recomputed on resize; nothing else about a scene or the physics sim is
+    // ever expressed in raw pixels, so a resize never distorts anything mid-throw.
+    let horizonY = 0, shoreY = 0;
+
+    function scaleViewportDimensions() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        horizonY = canvas.height * 0.44;
+        shoreY = canvas.height * 0.985;
+    }
+    window.addEventListener('resize', scaleViewportDimensions);
+    scaleViewportDimensions();
+
+    // --- Cached gradients --------------------------------------------------
+    // Same pattern used in Signal Lost: gradients are defined in
+    // canvas-size-relative space, not per-frame state, so build them once and
+    // only rebuild when a tracked variant (here: the canvas size or the
+    // active scene) actually changes.
+    function cachedGradient(obj, key, variant, build) {
+        const gradKey = '_grad_' + key, variantKey = '_gradV_' + key;
+        if (!obj[gradKey] || obj[variantKey] !== variant) {
+            obj[gradKey] = build();
+            obj[variantKey] = variant;
+        }
+        return obj[gradKey];
+    }
+
+    // --- Audio engine --------------------------------------------------
+    // Same architectural pattern as Signal Lost's AudioEngine (lazy ctx init
+    // gated on a real user gesture, shared delay/filter bus, small
+    // helper-wrapped one-shot triggers) but ambient content instead of a
+    // rhythmic step sequencer: a slow drone/pad, a sparse generative
+    // pentatonic pluck line, and a quiet filtered-noise water/wind bed.
+    // Unlike Signal Lost's toggle (which defaults off), this defaults ON --
+    // ambient music is core to the pitch, so it should start the moment the
+    // gesture-gate is satisfied (the player's first throw) rather than
+    // needing an extra tap.
+    const AudioEngine = {
+        ctx: null, masterGain: null, delayNode: null, delayFilter: null, delayFeedback: null,
+        noiseBuffer: null, droneGain: null, windGain: null, pluckTimer: null,
+        isMuted: false,
+
+        init() {
+            if (this.ctx) return;
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+            this.masterGain = this.ctx.createGain();
+            this.masterGain.gain.value = 0.8;
+            this.masterGain.connect(this.ctx.destination);
+
+            // Shared spacious echo bus -- softer/longer than Signal Lost's,
+            // to match a calm outdoor-lake feel rather than a guitar amp.
+            this.delayNode = this.ctx.createDelay(2.0);
+            this.delayNode.delayTime.value = 0.45;
+            this.delayFilter = this.ctx.createBiquadFilter();
+            this.delayFilter.type = 'lowpass';
+            this.delayFilter.frequency.value = 2000;
+            this.delayFeedback = this.ctx.createGain();
+            this.delayFeedback.gain.value = 0.38;
+            this.delayNode.connect(this.delayFilter);
+            this.delayFilter.connect(this.delayFeedback);
+            this.delayFeedback.connect(this.delayNode);
+            this.delayNode.connect(this.masterGain);
+
+            // One shared noise buffer, reused for the wind bed and the
+            // throw/splash SFX (same trick as Signal Lost's AudioEngine.init()).
+            const bufferSize = this.ctx.sampleRate * 2;
+            this.noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+            const data = this.noiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+            this.startDrone();
+            this.startWindBed();
+            this.schedulePluck();
+        },
+
+        startDrone() {
+            const freqs = [110, 165, 220]; // root, fifth, octave -- a soft open chord
+            const filter = this.ctx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = 700;
+
+            const lfo = this.ctx.createOscillator();
+            lfo.frequency.value = 0.05; // very slow filter sweep, barely perceptible as movement
+            const lfoGain = this.ctx.createGain();
+            lfoGain.gain.value = 250;
+            lfo.connect(lfoGain);
+            lfoGain.connect(filter.frequency);
+            lfo.start();
+
+            freqs.forEach((f, i) => {
+                const osc = this.ctx.createOscillator();
+                osc.type = 'sine';
+                osc.frequency.value = f * (1 + (i - 1) * 0.003); // slight detune for warmth
+                const oscGain = this.ctx.createGain();
+                oscGain.gain.value = 1 / freqs.length;
+                osc.connect(oscGain);
+                oscGain.connect(filter);
+                osc.start();
+            });
+
+            this.droneGain = this.ctx.createGain();
+            this.droneGain.gain.value = this.isMuted ? 0 : 0.12;
+            filter.connect(this.droneGain);
+            this.droneGain.connect(this.masterGain);
+            this.droneGain.connect(this.delayNode);
+        },
+
+        startWindBed() {
+            const src = this.ctx.createBufferSource();
+            src.buffer = this.noiseBuffer;
+            src.loop = true;
+            const filter = this.ctx.createBiquadFilter();
+            filter.type = 'bandpass';
+            filter.frequency.value = 500;
+            filter.Q.value = 0.5;
+            this.windGain = this.ctx.createGain();
+            this.windGain.gain.value = this.isMuted ? 0 : 0.025;
+            src.connect(filter);
+            filter.connect(this.windGain);
+            this.windGain.connect(this.masterGain);
+            src.start();
+        },
+
+        // Sparse, randomly-timed pentatonic notes -- generative ambience,
+        // not a metric sequencer.
+        schedulePluck() {
+            const scale = [220, 246.94, 293.66, 329.63, 392.0]; // A pentatonic
+            const freq = scale[Math.floor(Math.random() * scale.length)] * (Math.random() < 0.3 ? 2 : 1);
+            this.pluck(freq, 0.06, 2.2);
+            this.pluckTimer = setTimeout(() => this.schedulePluck(), 3000 + Math.random() * 6000);
+        },
+
+        pluck(freq, volume, duration) {
+            if (!this.ctx || this.isMuted) return;
+            const now = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            const gain = this.ctx.createGain();
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(volume, now + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+            osc.connect(gain);
+            gain.connect(this.masterGain);
+            gain.connect(this.delayNode);
+            osc.start(now);
+            osc.stop(now + duration + 0.1);
+        },
+
+        triggerThrow() {
+            if (!this.ctx || this.isMuted) return;
+            const now = this.ctx.currentTime;
+            const src = this.ctx.createBufferSource();
+            src.buffer = this.noiseBuffer;
+            const filter = this.ctx.createBiquadFilter();
+            filter.type = 'bandpass';
+            filter.frequency.setValueAtTime(1200, now);
+            filter.frequency.exponentialRampToValueAtTime(300, now + 0.25);
+            const gain = this.ctx.createGain();
+            gain.gain.setValueAtTime(0.12, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+            src.connect(filter); filter.connect(gain); gain.connect(this.masterGain);
+            src.start(now); src.stop(now + 0.3);
+        },
+
+        triggerSkip(count) {
+            // A bright pentatonic run that climbs an octave every 5 skips --
+            // stays pleasant/consonant even on a long streak instead of just
+            // linearly sliding the pitch up.
+            const scale = [523.25, 587.33, 659.25, 783.99, 880.0]; // C pentatonic
+            const idx = (count - 1) % scale.length;
+            const octave = Math.floor((count - 1) / scale.length);
+            this.pluck(scale[idx] * Math.pow(2, octave * 0.5), 0.14, 0.35);
+        },
+
+        triggerSplash() {
+            if (!this.ctx || this.isMuted) return;
+            const now = this.ctx.currentTime;
+            const src = this.ctx.createBufferSource();
+            src.buffer = this.noiseBuffer;
+            const filter = this.ctx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(2500, now);
+            filter.frequency.exponentialRampToValueAtTime(150, now + 0.5);
+            const gain = this.ctx.createGain();
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+            src.connect(filter); filter.connect(gain); gain.connect(this.masterGain);
+            src.start(now); src.stop(now + 0.7);
+        },
+
+        toggleMute() {
+            this.isMuted = !this.isMuted;
+            if (this.ctx) {
+                const now = this.ctx.currentTime;
+                if (this.droneGain) this.droneGain.gain.setTargetAtTime(this.isMuted ? 0 : 0.12, now, 0.3);
+                if (this.windGain) this.windGain.gain.setTargetAtTime(this.isMuted ? 0 : 0.025, now, 0.3);
+            }
+            document.getElementById('btn-mute').innerHTML = this.isMuted ? '&#128263;' : '&#128266;';
+        }
+    };
+    document.getElementById('btn-mute').addEventListener('click', () => AudioEngine.toggleMute());
+
+    // --- Seeded RNG ---------------------------------------------------------
+    // A scene's mountain ridge and wildlife placement should look the same
+    // every time that scene loads, not reshuffle randomly on every rotation --
+    // deterministic per named scene, via mulberry32 seeded from a string hash.
+    function hashSeed(str) {
+        let h = 1779033703 ^ str.length;
+        for (let i = 0; i < str.length; i++) {
+            h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
+            h = (h << 13) | (h >>> 19);
+        }
+        return () => {
+            h = Math.imul(h ^ (h >>> 16), 2246822507);
+            h = Math.imul(h ^ (h >>> 13), 3266489909);
+            h ^= h >>> 16;
+            return (h >>> 0) / 4294967296;
+        };
+    }
+
+    // --- Scene presets -------------------------------------------------------
+    // Each scene is fully self-describing: sky/mountain/water colors plus
+    // which wildlife types are eligible. Ridge shapes and gradients are
+    // generated lazily and cached on the scene object the first time it's
+    // drawn (see cachedGradient above / buildRidge below), not per frame.
+    const SCENES = [
+        {
+            name: 'Misty Dawn Lake',
+            sky: ['#1c2b30', '#3d5a52', '#c9a877'],
+            mountains: ['#16232a', '#223832'],
+            water: ['#0e2a2e', '#1c4a48'],
+            mist: true,
+            wildlife: ['heron', 'mist_wisp']
+        },
+        {
+            name: 'Golden Afternoon Pond',
+            sky: ['#bfe3f0', '#eaf1c9', '#f5d98a'],
+            mountains: ['#4a6b4f', '#6f8f5c'],
+            water: ['#2f6f6a', '#4fa89a'],
+            wildlife: ['duck', 'dragonfly']
+        },
+        {
+            name: 'Autumn Shoreline',
+            sky: ['#3a2f4d', '#a8654a', '#e8a15c'],
+            mountains: ['#3e2a22', '#6b4430'],
+            water: ['#1f3a3e', '#3a5c56'],
+            wildlife: ['duck', 'fish_jump']
+        },
+        {
+            name: 'Alpine Tarn',
+            sky: ['#12202e', '#2b4a5e', '#7ea8bd'],
+            mountains: ['#0e1a22', '#1c2f3a'],
+            snowcap: '#e8eef2',
+            water: ['#0c2a34', '#1d4f5c'],
+            wildlife: ['bird_flock']
+        },
+        {
+            name: 'Dusk Cove',
+            sky: ['#150f2e', '#4a2c5e', '#d9738a'],
+            mountains: ['#160f24', '#2a1c3a'],
+            water: ['#160f2e', '#2c1f4a'],
+            wildlife: ['firefly', 'bat']
+        }
+    ];
+
+    // Fractional ridge points (xFrac 0..1, heightFrac 0..1 of maxMountainPx)
+    // so the same generated shape re-projects correctly at any canvas size.
+    function buildRidge(seedStr, points, roughness) {
+        const rand = hashSeed(seedStr);
+        const pts = [];
+        let h = 0.3 + rand() * 0.3;
+        for (let i = 0; i <= points; i++) {
+            h += (rand() - 0.5) * roughness;
+            h = Math.max(0.08, Math.min(0.95, h));
+            pts.push({ x: i / points, h });
+        }
+        return pts;
+    }
+
+    function ridgePath(ridge, w, baseY, maxH) {
+        ctx.beginPath();
+        ctx.moveTo(0, baseY);
+        ridge.forEach(p => ctx.lineTo(p.x * w, baseY - p.h * maxH));
+        ctx.lineTo(w, baseY);
+        ctx.closePath();
+    }
+
+    const MAX_MOUNTAIN_PX = 130;
+
+    function drawScene(scene, alpha) {
+        const w = canvas.width, h = canvas.height;
+        ctx.save();
+        if (alpha < 1) ctx.globalAlpha = alpha;
+
+        // Sky
+        const skyGrad = cachedGradient(scene, 'sky', h, () => {
+            const g = ctx.createLinearGradient(0, 0, 0, horizonY);
+            g.addColorStop(0, scene.sky[0]);
+            g.addColorStop(0.6, scene.sky[1]);
+            g.addColorStop(1, scene.sky[2]);
+            return g;
+        });
+        ctx.fillStyle = skyGrad;
+        ctx.fillRect(0, 0, w, horizonY);
+
+        // Mountains -- two ridge layers, back lighter/further, front darker/closer
+        if (!scene._ridgeBack) {
+            scene._ridgeBack = buildRidge(scene.name + ':back', 14, 0.16);
+            scene._ridgeFront = buildRidge(scene.name + ':front', 10, 0.22);
+        }
+        ctx.fillStyle = scene.mountains[0];
+        ridgePath(scene._ridgeBack, w, horizonY, MAX_MOUNTAIN_PX * 0.75);
+        ctx.fill();
+        ctx.fillStyle = scene.mountains[1];
+        ridgePath(scene._ridgeFront, w, horizonY, MAX_MOUNTAIN_PX);
+        ctx.fill();
+        if (scene.snowcap) {
+            ctx.fillStyle = scene.snowcap;
+            scene._ridgeFront.forEach(p => {
+                if (p.h > 0.72) {
+                    const px = p.x * w, py = horizonY - p.h * MAX_MOUNTAIN_PX;
+                    ctx.beginPath();
+                    ctx.moveTo(px - 9, py + 10);
+                    ctx.lineTo(px, py);
+                    ctx.lineTo(px + 9, py + 10);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+            });
+        }
+
+        // Water -- gradient base + a soft mirrored-mountain reflection + shimmer
+        const waterGrad = cachedGradient(scene, 'water', h, () => {
+            const g = ctx.createLinearGradient(0, horizonY, 0, shoreY);
+            g.addColorStop(0, scene.water[1]);
+            g.addColorStop(1, scene.water[0]);
+            return g;
+        });
+        ctx.fillStyle = waterGrad;
+        ctx.fillRect(0, horizonY, w, shoreY - horizonY);
+
+        ctx.save();
+        ctx.globalAlpha = (alpha < 1 ? alpha : 1) * 0.16;
+        ctx.translate(0, horizonY * 2);
+        ctx.scale(1, -0.4);
+        ctx.fillStyle = scene.mountains[1];
+        ridgePath(scene._ridgeFront, w, horizonY, MAX_MOUNTAIN_PX);
+        ctx.fill();
+        ctx.restore();
+
+        ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i < 8; i++) {
+            const fy = horizonY + (shoreY - horizonY) * (i / 8) * (i / 8);
+            const shimmer = Math.sin(sceneTime * 0.6 + i * 1.7) * 8;
+            ctx.beginPath();
+            ctx.moveTo(0, fy);
+            ctx.lineTo(w, fy + shimmer);
+            ctx.stroke();
+        }
+
+        if (scene.mist) {
+            ctx.fillStyle = 'rgba(230,236,230,0.10)';
+            for (let i = 0; i < 3; i++) {
+                const my = horizonY - 6 + i * 10 + Math.sin(sceneTime * 0.15 + i) * 6;
+                ctx.fillRect(0, my, w, 14);
+            }
+        }
+
+        ctx.restore();
+    }
+
+    // --- Wildlife -------------------------------------------------------
+    // Purely decorative, idle-animated, no collision. Populated fresh
+    // whenever the active scene changes (see rotateScene below).
+    let wildlife = [];
+
+    function spawnWildlife(scene) {
+        wildlife = [];
+        const w = canvas.width;
+        scene.wildlife.forEach((type, i) => {
+            const count = (type === 'bird_flock') ? 3 : (type === 'firefly') ? 5 : 1;
+            for (let c = 0; c < count; c++) {
+                wildlife.push({
+                    type,
+                    xFrac: 0.15 + ((i + c * 0.6) % 3) * 0.3 + Math.random() * 0.1,
+                    phase: Math.random() * Math.PI * 2,
+                    seed: Math.random() * 1000,
+                    nextJump: 4 + Math.random() * 8
+                });
+            }
+        });
+    }
+
+    function updateWildlife(dt) {
+        wildlife.forEach(a => {
+            if (a.type !== 'fish_jump') return;
+            a.nextJump -= dt;
+            if (a.nextJump <= 0 && !a.jumping) {
+                a.jumping = true; a.jumpT = 0;
+                a.jumpX = 0.2 + Math.random() * 0.6;
+            }
+            if (a.jumping) {
+                a.jumpT += dt;
+                if (a.jumpT > 0.6) {
+                    a.jumping = false;
+                    a.nextJump = 5 + Math.random() * 10;
+                }
+            }
+        });
+    }
+
+    function drawWildlife() {
+        const w = canvas.width;
+        wildlife.forEach(a => {
+            if (a.type === 'duck') {
+                const x = a.xFrac * w + Math.sin(sceneTime * 0.05 + a.phase) * 30;
+                const y = horizonY + 34 + Math.sin(sceneTime * 1.4 + a.phase) * 2;
+                ctx.fillStyle = 'rgba(20,16,14,0.8)';
+                ctx.beginPath();
+                ctx.ellipse(x, y, 9, 5, 0, 0, Math.PI * 2);
+                ctx.ellipse(x + 7, y - 4, 4, 4, 0, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (a.type === 'dragonfly') {
+                const x = a.xFrac * w + Math.sin(sceneTime * 0.8 + a.phase) * 50;
+                const y = horizonY + 60 + Math.sin(sceneTime * 1.6 + a.phase) * 14 + Math.sin(sceneTime * 0.3) * 10;
+                ctx.strokeStyle = 'rgba(30,30,20,0.7)'; ctx.lineWidth = 1.5;
+                ctx.beginPath(); ctx.moveTo(x - 6, y); ctx.lineTo(x + 6, y); ctx.stroke();
+                ctx.fillStyle = 'rgba(150,220,255,0.35)';
+                const flick = Math.sin(sceneTime * 20 + a.phase) * 3;
+                ctx.beginPath(); ctx.ellipse(x, y - flick, 5, 1.6, 0.3, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.ellipse(x, y + flick, 5, 1.6, -0.3, 0, Math.PI * 2); ctx.fill();
+            } else if (a.type === 'heron') {
+                const x = a.xFrac * w;
+                const y = horizonY - 4 + Math.sin(sceneTime * 0.2 + a.phase) * 1.5;
+                ctx.fillStyle = 'rgba(10,10,10,0.55)';
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(x - 3, y - 22);
+                ctx.lineTo(x + 2, y - 26);
+                ctx.lineTo(x + 5, y - 20);
+                ctx.lineTo(x + 3, y);
+                ctx.closePath();
+                ctx.fill();
+                ctx.fillRect(x - 1, y, 2, 10);
+            } else if (a.type === 'mist_wisp') {
+                // handled by scene.mist flag globally, nothing per-instance to draw
+            } else if (a.type === 'bird_flock') {
+                const t = (sceneTime * 0.02 + a.phase) % 1;
+                const x = t * (w + 100) - 50;
+                const y = horizonY * 0.35 + a.seed % 40 + Math.sin(sceneTime * 2 + a.phase) * 3;
+                ctx.strokeStyle = 'rgba(10,10,10,0.5)'; ctx.lineWidth = 1.4;
+                ctx.beginPath();
+                ctx.moveTo(x - 5, y + 2); ctx.lineTo(x, y); ctx.lineTo(x + 5, y + 2);
+                ctx.stroke();
+            } else if (a.type === 'firefly') {
+                const x = a.xFrac * w + Math.sin(sceneTime * 0.15 + a.phase) * 40;
+                const y = horizonY + 90 + (a.seed % 60) + Math.cos(sceneTime * 0.2 + a.phase) * 20;
+                const blink = 0.3 + 0.7 * Math.max(0, Math.sin(sceneTime * 2.2 + a.phase * 3));
+                ctx.fillStyle = `rgba(230,240,150,${blink * 0.8})`;
+                ctx.beginPath(); ctx.arc(x, y, 2, 0, Math.PI * 2); ctx.fill();
+            } else if (a.type === 'bat') {
+                const t = (sceneTime * 0.08 + a.phase) % 1;
+                const x = t * (w + 100) - 50 + Math.sin(sceneTime * 3 + a.phase) * 15;
+                const y = horizonY * 0.5 + Math.sin(sceneTime * 4 + a.phase) * 10;
+                ctx.fillStyle = 'rgba(5,5,10,0.6)';
+                const flap = Math.sin(sceneTime * 12 + a.phase) * 5;
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(x - 6, y - flap);
+                ctx.lineTo(x - 2, y);
+                ctx.lineTo(x + 2, y);
+                ctx.lineTo(x + 6, y - flap);
+                ctx.closePath();
+                ctx.fill();
+            } else if (a.type === 'fish_jump' && a.jumping) {
+                const p = a.jumpT / 0.6;
+                const x = a.jumpX * w;
+                const y = shoreY - (shoreY - horizonY) * 0.5 - Math.sin(p * Math.PI) * 26;
+                ctx.strokeStyle = 'rgba(20,30,25,0.7)'; ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(x - 6, y + 3);
+                ctx.quadraticCurveTo(x, y - 6, x + 6, y + 3);
+                ctx.stroke();
+            }
+        });
+    }
+
+    // --- Scene rotation --------------------------------------------------
+    let currentScene = SCENES[0];
+    let sceneBag = [];
+    let prevScene = null, sceneTransitionT = 1, sceneTransitionDur = 1.1;
+    let sceneTime = 0;
+
+    function refillBag() {
+        sceneBag = SCENES.map((_, i) => i).filter(i => SCENES[i] !== currentScene);
+        for (let i = sceneBag.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [sceneBag[i], sceneBag[j]] = [sceneBag[j], sceneBag[i]];
+        }
+    }
+
+    function rotateScene() {
+        if (sceneBag.length === 0) refillBag();
+        const nextIndex = sceneBag.pop();
+        prevScene = currentScene;
+        currentScene = SCENES[nextIndex];
+        sceneTransitionT = 0;
+        spawnWildlife(currentScene);
+    }
+
+    spawnWildlife(currentScene);
+    document.getElementById('btn-view').addEventListener('click', rotateScene);
+
+    // --- Stone physics -----------------------------------------------------
+    // World-space simulation (x = lateral drift, z = distance across the
+    // pond, h = height above water) -- never raw pixel coordinates, so a
+    // resize or scene change mid-throw can't distort anything. Screen
+    // position is derived fresh every frame via a perspective-divide
+    // projection (see projectStone below).
+    const GRAVITY = 15;
+    const FOCAL_LENGTH = 14;
+    const BASE_FORWARD = 3;
+    const FORWARD_SCALE = 0.012;
+    const BASE_LOFT = 2;
+    const LOFT_SCALE = 0.01;
+    const LATERAL_SCALE = 0.008;
+    const RESTITUTION = 0.62;
+    const FRICTION = 0.88;
+    const LATERAL_DECAY = 0.9;
+    const SKIP_ANGLE_THRESHOLD = 55 * Math.PI / 180;
+    const MIN_SKIP_SPEED = 8;
+    const MAX_SKIPS = 60;
+    const MAX_SIM_TIME = 15;
+    const MIN_DRAG_DIST = 18;
+    const MIN_DRAG_SPEED = 150; // px/s
+    const RESOLVE_PAUSE = 0.5;
+    const SCENE_ROTATE_EVERY = 7;
+
+    const stone = {
+        state: 'READY', // READY -> AIMING -> FLYING -> RESOLVED -> READY
+        x: 0, z: 0, h: 0, vx: 0, vz: 0, vh: 0,
+        skips: 0, simTime: 0, resolveTimer: 0
+    };
+    let sessionBest = 0;
+    let throwsSinceSceneChange = 0;
+    let hasThrownOnce = false;
+
+    let ripples = []; // {x, z, r, alpha, big}
+    const MAX_RIPPLES = 40;
+
+    function spawnRipple(x, z, big) {
+        if (ripples.length >= MAX_RIPPLES) ripples.shift();
+        ripples.push({ x, z, r: big ? 4 : 2, alpha: big ? 0.55 : 0.4, big });
+    }
+
+    function updateRipples(dt) {
+        ripples.forEach(r => {
+            r.r += (r.big ? 46 : 30) * dt;
+            r.alpha -= (r.big ? 0.55 : 0.75) * dt;
+        });
+        ripples = ripples.filter(r => r.alpha > 0);
+    }
+
+    function drawRipples() {
+        ripples.forEach(r => {
+            const scale = FOCAL_LENGTH / (FOCAL_LENGTH + r.z);
+            const sx = canvas.width / 2 + r.x * scale * 40;
+            const sy = horizonY + (shoreY - horizonY) * scale;
+            ctx.strokeStyle = `rgba(230,240,235,${Math.max(0, r.alpha) * 0.6})`;
+            ctx.lineWidth = 1.4 * scale;
+            ctx.beginPath();
+            ctx.ellipse(sx, sy, r.r * scale, r.r * 0.4 * scale, 0, 0, Math.PI * 2);
+            ctx.stroke();
+        });
+    }
+
+    function projectStone() {
+        const scale = FOCAL_LENGTH / (FOCAL_LENGTH + stone.z);
+        const sx = canvas.width / 2 + stone.x * scale * 40;
+        const sy = horizonY + (shoreY - horizonY) * scale - stone.h * scale * 60;
+        const radius = Math.max(1.5, 6 * scale);
+        return { sx, sy, radius, scale };
+    }
+
+    // --- Input: drag-and-release flick, unified across mouse/touch ---------
+    let activePointerId = null;
+    let dragSamples = []; // {x, y, t}
+    let dragStartPoint = null;
+
+    function pushDragSample(e) {
+        const rect = canvas.getBoundingClientRect();
+        const now = performance.now();
+        dragSamples.push({ x: e.clientX - rect.left, y: e.clientY - rect.top, t: now });
+        while (dragSamples.length > 1 && now - dragSamples[0].t > 150) dragSamples.shift();
+    }
+
+    function resetStoneToReady() {
+        stone.state = 'READY';
+        stone.x = 0; stone.z = 0; stone.h = 0; stone.vx = 0; stone.vz = 0; stone.vh = 0;
+        stone.skips = 0; stone.simTime = 0;
+        document.getElementById('hud-skips').textContent = '0';
+    }
+
+    function launchStone() {
+        // Recent velocity (last ~100ms before release), not total drag
+        // distance/duration -- a drag-then-pause-then-slow-release shouldn't
+        // be rewarded as if it were a fast flick.
+        const now = performance.now();
+        const recent = dragSamples.filter(s => now - s.t <= 100);
+        const ref = recent[0] || dragSamples[0];
+        const last = dragSamples[dragSamples.length - 1];
+        if (!ref || !last || last.t === ref.t) { resetStoneToReady(); return; }
+
+        const dtS = (last.t - ref.t) / 1000;
+        const dx = last.x - ref.x, dy = last.y - ref.y;
+        const totalDist = Math.hypot(last.x - dragStartPoint.x, last.y - dragStartPoint.y);
+        const vxScreen = dx / dtS, vyScreen = dy / dtS;
+        const speed = Math.hypot(vxScreen, vyScreen);
+
+        if (totalDist < MIN_DRAG_DIST || speed < MIN_DRAG_SPEED) { resetStoneToReady(); return; }
+
+        const up = Math.max(0, -vyScreen);
+        const side = vxScreen;
+
+        // Forward speed comes from the horizontal sweep, loft from the
+        // vertical one -- kept independent so a flat drag reads as fast/flat
+        // (skippy) and a vertical drag reads as slow/high (a plop), matching
+        // real skipping technique, rather than both scaling off total speed.
+        stone.x = 0; stone.z = 0; stone.h = 0.4;
+        stone.vz = BASE_FORWARD + Math.abs(side) * FORWARD_SCALE;
+        stone.vh = BASE_LOFT + up * LOFT_SCALE;
+        stone.vx = side * LATERAL_SCALE;
+        stone.skips = 0;
+        stone.simTime = 0;
+        stone.state = 'FLYING';
+        hasThrownOnce = true;
+        document.getElementById('drag-hint').classList.remove('show');
+        document.getElementById('hud-skips').textContent = '0';
+        AudioEngine.triggerThrow();
+    }
+
+    function onPointerDown(e) {
+        if (stone.state !== 'READY') return;
+        activePointerId = e.pointerId;
+        canvas.setPointerCapture(e.pointerId);
+        const rect = canvas.getBoundingClientRect();
+        dragStartPoint = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        dragSamples = [];
+        pushDragSample(e);
+        stone.state = 'AIMING';
+        AudioEngine.init();
+        if (AudioEngine.ctx.state === 'suspended') AudioEngine.ctx.resume();
+    }
+    function onPointerMove(e) {
+        if (stone.state !== 'AIMING' || e.pointerId !== activePointerId) return;
+        pushDragSample(e);
+    }
+    function onPointerUp(e) {
+        if (stone.state !== 'AIMING' || e.pointerId !== activePointerId) return;
+        activePointerId = null;
+        launchStone();
+    }
+    function onPointerCancel(e) {
+        if (e.pointerId !== activePointerId) return;
+        activePointerId = null;
+        if (stone.state === 'AIMING') resetStoneToReady();
+    }
+    canvas.addEventListener('pointerdown', onPointerDown);
+    canvas.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerCancel);
+
+    function drawAimTrail() {
+        if (stone.state !== 'AIMING' || dragSamples.length < 2) return;
+        const start = dragStartPoint;
+        const last = dragSamples[dragSamples.length - 1];
+        ctx.strokeStyle = 'rgba(238,243,234,0.55)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(start.x, start.y);
+        ctx.lineTo(last.x, last.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+
+    function updateStone(dt) {
+        if (stone.state === 'RESOLVED') {
+            stone.resolveTimer -= dt;
+            if (stone.resolveTimer <= 0) resetStoneToReady();
+            return;
+        }
+        if (stone.state !== 'FLYING') return;
+
+        stone.simTime += dt;
+        const prevH = stone.h;
+        const prevVh = stone.vh;
+        stone.vh -= GRAVITY * dt;
+        stone.h += stone.vh * dt;
+        stone.z += stone.vz * dt;
+        stone.x += stone.vx * dt;
+
+        const crossedWater = prevH > 0 && stone.h <= 0;
+        const outOfSteam = stone.skips >= MAX_SKIPS || stone.simTime >= MAX_SIM_TIME;
+
+        if (crossedWater || outOfSteam) {
+            // Reconstruct vh at the true water-plane crossing (linear-interpolated
+            // between last frame's height and this one) rather than using the
+            // post-step value -- otherwise skip/sink behavior would depend on
+            // frame rate, since a bigger dt overshoots further past h=0 before
+            // the check runs.
+            const impactVh = crossedWater ? prevVh - GRAVITY * (dt * (prevH / (prevH - stone.h))) : stone.vh;
+            const impactAngle = Math.atan2(Math.abs(impactVh), Math.max(0.01, stone.vz));
+            const canSkip = !outOfSteam && impactAngle < SKIP_ANGLE_THRESHOLD && stone.vz > MIN_SKIP_SPEED;
+
+            if (canSkip) {
+                const restJitter = RESTITUTION * (1 + (Math.random() - 0.5) * 0.12);
+                const fricJitter = FRICTION * (1 + (Math.random() - 0.5) * 0.06);
+                stone.vh = Math.abs(stone.vh) * restJitter;
+                stone.vz *= fricJitter;
+                stone.vx *= LATERAL_DECAY;
+                stone.h = 0.01;
+                stone.skips++;
+                document.getElementById('hud-skips').textContent = String(stone.skips);
+                if (stone.skips > sessionBest) {
+                    sessionBest = stone.skips;
+                    document.getElementById('hud-best').textContent = String(sessionBest);
+                }
+                spawnRipple(stone.x, stone.z, false);
+                AudioEngine.triggerSkip(stone.skips);
+            } else {
+                spawnRipple(stone.x, stone.z, true);
+                AudioEngine.triggerSplash();
+                stone.state = 'RESOLVED';
+                stone.resolveTimer = RESOLVE_PAUSE;
+                throwsSinceSceneChange++;
+                if (throwsSinceSceneChange >= SCENE_ROTATE_EVERY) {
+                    throwsSinceSceneChange = 0;
+                    rotateScene();
+                }
+            }
+        }
+    }
+
+    function drawStone() {
+        drawRipples();
+        if (stone.state === 'FLYING' || (stone.state === 'RESOLVED' && stone.resolveTimer > RESOLVE_PAUSE - 0.15)) {
+            const p = projectStone();
+            ctx.save();
+            ctx.fillStyle = 'rgba(0,0,0,0.25)';
+            ctx.beginPath();
+            ctx.ellipse(p.sx, horizonY + (shoreY - horizonY) * p.scale, p.radius * 1.3, p.radius * 0.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+            const grad = ctx.createRadialGradient(p.sx - p.radius * 0.3, p.sy - p.radius * 0.3, 0.5, p.sx, p.sy, p.radius);
+            grad.addColorStop(0, '#cfd6d2');
+            grad.addColorStop(1, '#6b6f6a');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.ellipse(p.sx, p.sy, p.radius, p.radius * 0.8, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        } else if (stone.state === 'READY' || stone.state === 'AIMING') {
+            const sx = canvas.width / 2, sy = shoreY - 10;
+            ctx.fillStyle = 'rgba(0,0,0,0.25)';
+            ctx.beginPath(); ctx.ellipse(sx, sy + 5, 8, 3, 0, 0, Math.PI * 2); ctx.fill();
+            const grad = ctx.createRadialGradient(sx - 3, sy - 3, 0.5, sx, sy, 7);
+            grad.addColorStop(0, '#cfd6d2');
+            grad.addColorStop(1, '#6b6f6a');
+            ctx.fillStyle = grad;
+            ctx.beginPath(); ctx.ellipse(sx, sy, 7, 5.5, 0, 0, Math.PI * 2); ctx.fill();
+        }
+        drawAimTrail();
+    }
+
+    // One-time fade-in hint until the player's first throw.
+    setTimeout(() => {
+        if (!hasThrownOnce) document.getElementById('drag-hint').classList.add('show');
+    }, 900);
+
+    // --- Main loop -------------------------------------------------------
+    // Unlike Signal Lost's implicit-~16.7ms-frame loop, Skip Rocks simulates
+    // real physical arcs, so it needs an actual clamped delta-time: a
+    // backgrounded/throttled tab can otherwise deliver one huge frame on
+    // refocus and let a stone teleport through several bounces at once.
+    let lastFrameTime = performance.now();
+
+    function update(dt) {
+        sceneTime += dt;
+        if (sceneTransitionT < sceneTransitionDur) sceneTransitionT = Math.min(sceneTransitionDur, sceneTransitionT + dt);
+        updateWildlife(dt);
+        updateStone(dt);
+        updateRipples(dt);
+    }
+
+    function draw() {
+        if (sceneTransitionT < sceneTransitionDur && prevScene) {
+            drawScene(prevScene, 1);
+            drawScene(currentScene, sceneTransitionT / sceneTransitionDur);
+        } else {
+            drawScene(currentScene, 1);
+        }
+        drawWildlife();
+        drawStone();
+    }
+
+    function loop(now) {
+        const dt = Math.min((now - lastFrameTime) / 1000, 1 / 30);
+        lastFrameTime = now;
+        update(dt);
+        draw();
+        requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+</script>
+
+</body>
+</html>
