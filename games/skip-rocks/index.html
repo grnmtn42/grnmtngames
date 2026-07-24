@@ -347,21 +347,21 @@
             mountains: ['#16232a', '#223832'],
             water: ['#0e2a2e', '#1c4a48'],
             mist: true,
-            wildlife: ['heron', 'mist_wisp']
+            wildlife: ['heron', 'duck', 'swan']
         },
         {
             name: 'Golden Afternoon Pond',
             sky: ['#bfe3f0', '#eaf1c9', '#f5d98a'],
             mountains: ['#4a6b4f', '#6f8f5c'],
             water: ['#2f6f6a', '#4fa89a'],
-            wildlife: ['duck', 'dragonfly']
+            wildlife: ['duck', 'dragonfly', 'turtle', 'swan']
         },
         {
             name: 'Autumn Shoreline',
             sky: ['#3a2f4d', '#a8654a', '#e8a15c'],
             mountains: ['#3e2a22', '#6b4430'],
             water: ['#1f3a3e', '#3a5c56'],
-            wildlife: ['duck', 'fish_jump']
+            wildlife: ['duck', 'fish_jump', 'crow', 'turtle']
         },
         {
             name: 'Alpine Tarn',
@@ -369,14 +369,14 @@
             mountains: ['#0e1a22', '#1c2f3a'],
             snowcap: '#e8eef2',
             water: ['#0c2a34', '#1d4f5c'],
-            wildlife: ['bird_flock']
+            wildlife: ['bird_flock', 'duck', 'fish_jump']
         },
         {
             name: 'Dusk Cove',
             sky: ['#150f2e', '#4a2c5e', '#d9738a'],
             mountains: ['#160f24', '#2a1c3a'],
             water: ['#160f2e', '#2c1f4a'],
-            wildlife: ['firefly', 'bat']
+            wildlife: ['firefly', 'bat', 'moth', 'crow']
         }
     ];
 
@@ -491,12 +491,16 @@
     // Purely decorative, idle-animated, no collision. Populated fresh
     // whenever the active scene changes (see rotateScene below).
     let wildlife = [];
+    const WILDLIFE_COUNTS = {
+        duck: 2, dragonfly: 3, heron: 1, bird_flock: 3, firefly: 5, bat: 2,
+        fish_jump: 2, swan: 1, turtle: 2, crow: 2, moth: 3
+    };
 
     function spawnWildlife(scene) {
         wildlife = [];
         const w = canvas.width;
         scene.wildlife.forEach((type, i) => {
-            const count = (type === 'bird_flock') ? 3 : (type === 'firefly') ? 5 : 1;
+            const count = WILDLIFE_COUNTS[type] || 1;
             for (let c = 0; c < count; c++) {
                 wildlife.push({
                     type,
@@ -560,8 +564,44 @@
                 ctx.closePath();
                 ctx.fill();
                 ctx.fillRect(x - 1, y, 2, 10);
-            } else if (a.type === 'mist_wisp') {
-                // handled by scene.mist flag globally, nothing per-instance to draw
+            } else if (a.type === 'swan') {
+                const x = a.xFrac * w + Math.sin(sceneTime * 0.04 + a.phase) * 40;
+                const y = horizonY + 40 + Math.sin(sceneTime * 1.2 + a.phase) * 2;
+                ctx.fillStyle = 'rgba(255,255,255,0.92)';
+                ctx.beginPath();
+                ctx.ellipse(x, y, 13, 6, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255,255,255,0.92)'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(x + 9, y - 3);
+                ctx.quadraticCurveTo(x + 17, y - 15, x + 11, y - 19);
+                ctx.stroke();
+                ctx.fillStyle = '#e0a53c';
+                ctx.beginPath(); ctx.arc(x + 11, y - 19, 1.6, 0, Math.PI * 2); ctx.fill();
+            } else if (a.type === 'turtle') {
+                const x = a.xFrac * w;
+                const y = horizonY + 22 + (a.seed % 30) + Math.sin(sceneTime * 0.3 + a.phase) * 1.5;
+                ctx.fillStyle = 'rgba(52,64,36,0.75)';
+                ctx.beginPath(); ctx.ellipse(x, y, 6.5, 3.8, 0, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(x + 5.5, y, 1.8, 0, Math.PI * 2); ctx.fill();
+            } else if (a.type === 'crow') {
+                const t = (sceneTime * 0.03 + a.phase) % 1;
+                const x = t * (w + 100) - 50;
+                const y = horizonY * 0.4 + (a.seed % 50) + Math.sin(sceneTime * 3 + a.phase) * 4;
+                const flap = Math.sin(sceneTime * 8 + a.phase) * 6;
+                ctx.strokeStyle = 'rgba(10,10,10,0.65)'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(x - 7, y + flap * 0.3);
+                ctx.lineTo(x, y);
+                ctx.lineTo(x + 7, y + flap * 0.3);
+                ctx.stroke();
+            } else if (a.type === 'moth') {
+                const x = a.xFrac * w + Math.sin(sceneTime * 0.3 + a.phase) * 25 + Math.sin(sceneTime * 0.9 + a.phase * 2) * 8;
+                const y = horizonY + 70 + (a.seed % 50) + Math.cos(sceneTime * 0.25 + a.phase) * 15;
+                const flutter = Math.sin(sceneTime * 15 + a.phase) * 2.5;
+                ctx.fillStyle = 'rgba(220,215,200,0.5)';
+                ctx.beginPath(); ctx.ellipse(x - flutter, y, 3, 1.5, 0.4, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.ellipse(x + flutter, y, 3, 1.5, -0.4, 0, Math.PI * 2); ctx.fill();
             } else if (a.type === 'bird_flock') {
                 const t = (sceneTime * 0.02 + a.phase) % 1;
                 const x = t * (w + 100) - 50;
@@ -696,7 +736,7 @@
         const scale = FOCAL_LENGTH / (FOCAL_LENGTH + stone.z);
         const sx = canvas.width / 2 + stone.x * scale * 40;
         const sy = horizonY + (shoreY - horizonY) * scale - stone.h * scale * 60;
-        const radius = Math.max(1.5, 6 * scale);
+        const radius = Math.max(2.5, 9.5 * scale);
         return { sx, sy, radius, scale };
     }
 
@@ -880,12 +920,12 @@
         } else if (stone.state === 'READY' || stone.state === 'AIMING') {
             const sx = canvas.width / 2, sy = shoreY - 10;
             ctx.fillStyle = 'rgba(0,0,0,0.25)';
-            ctx.beginPath(); ctx.ellipse(sx, sy + 5, 8, 3, 0, 0, Math.PI * 2); ctx.fill();
-            const grad = ctx.createRadialGradient(sx - 3, sy - 3, 0.5, sx, sy, 7);
+            ctx.beginPath(); ctx.ellipse(sx, sy + 6, 12, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+            const grad = ctx.createRadialGradient(sx - 4, sy - 4, 0.5, sx, sy, 10.5);
             grad.addColorStop(0, '#cfd6d2');
             grad.addColorStop(1, '#6b6f6a');
             ctx.fillStyle = grad;
-            ctx.beginPath(); ctx.ellipse(sx, sy, 7, 5.5, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(sx, sy, 10.5, 8.5, 0, 0, Math.PI * 2); ctx.fill();
         }
         drawAimTrail();
     }
