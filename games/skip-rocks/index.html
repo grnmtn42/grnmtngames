@@ -116,12 +116,19 @@
     // recomputed on resize; nothing else about a scene or the physics sim is
     // ever expressed in raw pixels, so a resize never distorts anything mid-throw.
     let horizonY = 0, shoreY = 0;
+    // Mountain height as a fraction of horizonY rather than a fixed pixel
+    // value -- on a short/wide landscape viewport, horizonY shrinks a lot,
+    // and a fixed height would balloon to fill most of the remaining sky,
+    // burying anything positioned low in it (a sun/moon included). Capped at
+    // 130 so normal portrait/desktop proportions are unchanged from before.
+    let mountainHeightPx = 130;
 
     function scaleViewportDimensions() {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
         horizonY = canvas.height * 0.44;
         shoreY = canvas.height * 0.985;
+        mountainHeightPx = Math.min(130, horizonY * 0.4);
     }
     window.addEventListener('resize', scaleViewportDimensions);
     scaleViewportDimensions();
@@ -367,7 +374,7 @@
             water: ['#0e2a2e', '#1c4a48'],
             mist: true,
             foreground: { branch: '#0c1815', leaf: '#1a2e25', reed: '#152720' },
-            celestial: { type: 'sun', xFrac: 0.72, yFrac: 0.82, radius: 24, color: '#f3dba8', glow: 'rgba(243,219,168,0.4)' },
+            celestial: { type: 'sun', xFrac: 0.72, yFrac: 0.5, radius: 24, color: '#f3dba8', glow: 'rgba(243,219,168,0.4)' },
             cloudColor: 'rgba(224,214,198,0.45)',
             wildlife: ['heron', 'duck', 'swan']
         },
@@ -387,7 +394,7 @@
             mountains: ['#3e2a22', '#6b4430'],
             water: ['#1f3a3e', '#3a5c56'],
             foreground: { branch: '#2e1c10', leaf: '#a8562e', reed: '#8a6a30' },
-            celestial: { type: 'sun', xFrac: 0.28, yFrac: 0.78, radius: 30, color: '#f5b878', glow: 'rgba(245,184,120,0.45)' },
+            celestial: { type: 'sun', xFrac: 0.28, yFrac: 0.5, radius: 30, color: '#f5b878', glow: 'rgba(245,184,120,0.45)' },
             cloudColor: 'rgba(240,200,170,0.45)',
             wildlife: ['duck', 'fish_jump', 'crow', 'turtle']
         },
@@ -520,8 +527,6 @@
         });
     }
 
-    const MAX_MOUNTAIN_PX = 130;
-
     function drawScene(scene, alpha) {
         const w = canvas.width, h = canvas.height;
         ctx.save();
@@ -550,16 +555,16 @@
             scene._ridgeFront = buildRidge(scene.name + ':front', 10, 0.22);
         }
         ctx.fillStyle = scene.mountains[0];
-        ridgePath(scene._ridgeBack, w, horizonY, MAX_MOUNTAIN_PX * 0.75);
+        ridgePath(scene._ridgeBack, w, horizonY, mountainHeightPx * 0.75);
         ctx.fill();
         ctx.fillStyle = scene.mountains[1];
-        ridgePath(scene._ridgeFront, w, horizonY, MAX_MOUNTAIN_PX);
+        ridgePath(scene._ridgeFront, w, horizonY, mountainHeightPx);
         ctx.fill();
         if (scene.snowcap) {
             ctx.fillStyle = scene.snowcap;
             scene._ridgeFront.forEach(p => {
                 if (p.h > 0.72) {
-                    const px = p.x * w, py = horizonY - p.h * MAX_MOUNTAIN_PX;
+                    const px = p.x * w, py = horizonY - p.h * mountainHeightPx;
                     ctx.beginPath();
                     ctx.moveTo(px - 9, py + 10);
                     ctx.lineTo(px, py);
@@ -585,7 +590,7 @@
         ctx.translate(0, horizonY * 2);
         ctx.scale(1, -0.4);
         ctx.fillStyle = scene.mountains[1];
-        ridgePath(scene._ridgeFront, w, horizonY, MAX_MOUNTAIN_PX);
+        ridgePath(scene._ridgeFront, w, horizonY, mountainHeightPx);
         ctx.fill();
         ctx.restore();
 
@@ -644,11 +649,17 @@
                     seed: Math.random() * 1000,
                     nextJump: 4 + Math.random() * 8
                 };
-                if (type === 'duck') a.baseY = horizonY + 30 + c * 16 + Math.random() * 10;
-                else if (type === 'swan') a.baseY = horizonY + 40 + Math.random() * 8;
-                else if (type === 'turtle') a.baseY = horizonY + 22 + Math.random() * 30;
-                else if (type === 'heron') a.baseY = horizonY - 4;
-                else if (type === 'dragonfly') a.baseY = horizonY + 60 + Math.random() * 20;
+                // Stored as a fraction of the water band (horizonY..shoreY),
+                // not a snapshotted pixel value -- recomputed fresh every
+                // frame in updateWildlife so a mid-session resize/rotation
+                // can't strand an animal above or below where it should be.
+                if (type === 'duck') a.baseYFrac = 0.06 + c * 0.035 + Math.random() * 0.02;
+                else if (type === 'swan') a.baseYFrac = 0.09 + Math.random() * 0.02;
+                else if (type === 'turtle') a.baseYFrac = 0.05 + Math.random() * 0.07;
+                else if (type === 'dragonfly') a.baseYFrac = 0.14 + Math.random() * 0.05;
+                // heron stands right at the shoreline, just above the
+                // horizon rather than within the water band -- recomputed
+                // the same resize-safe way, just without a band fraction.
                 wildlife.push(a);
             }
         });
@@ -657,6 +668,7 @@
     function updateWildlife(dt) {
         const w = canvas.width;
         wildlife.forEach(a => {
+            a.baseY = a.type === 'heron' ? horizonY - 4 : horizonY + (a.baseYFrac || 0) * (shoreY - horizonY);
             if (a.type === 'fish_jump') {
                 a.nextJump -= dt;
                 if (a.nextJump <= 0 && !a.jumping) {
@@ -1049,6 +1061,24 @@
         stone.z += stone.vz * dt;
         stone.x += stone.vx * dt;
 
+        // Keep the stone within view laterally. The same world-space drift
+        // that reads as a gentle curve on a wide desktop/landscape screen
+        // projects to a much larger fraction of a narrow portrait one, so
+        // clamp against the actual current canvas width (and the stone's
+        // current perspective scale) rather than a fixed world-space bound
+        // -- this way it self-adjusts to whatever orientation is live
+        // instead of needing a separate "portrait mode" rule.
+        const lateralScale = FOCAL_LENGTH / (FOCAL_LENGTH + stone.z);
+        const edgeMargin = 24;
+        const maxWorldX = (canvas.width / 2 - edgeMargin) / (lateralScale * 40);
+        if (stone.x > maxWorldX) {
+            stone.x = maxWorldX;
+            if (stone.vx > 0) stone.vx *= 0.2;
+        } else if (stone.x < -maxWorldX) {
+            stone.x = -maxWorldX;
+            if (stone.vx < 0) stone.vx *= 0.2;
+        }
+
         const crossedWater = prevH > 0 && stone.h <= 0;
         const outOfSteam = stone.skips >= MAX_SKIPS || stone.simTime >= MAX_SIM_TIME;
 
@@ -1202,9 +1232,9 @@
     function update(dt) {
         sceneTime += dt;
         if (sceneTransitionT < sceneTransitionDur) sceneTransitionT = Math.min(sceneTransitionDur, sceneTransitionT + dt);
+        updateWildlife(dt);
         updateStone(dt);
         checkWildlifeCollisions();
-        updateWildlife(dt);
         updateRipples(dt);
     }
 
