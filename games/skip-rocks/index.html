@@ -305,70 +305,6 @@
             this.cicadaTimer = setTimeout(() => this.scheduleCicadas(), 12000 + Math.random() * 14000);
         },
 
-        // A breathy flute-toned chime -- no longer the ambient track (that's
-        // the nature soundscape above), just the skip-count feedback voice
-        // now: a sine tone with a soft blown attack, vibrato that only
-        // fades in partway through the note, and a breath-noise layer for
-        // airiness. `glide` approaches the pitch from below; `vibrato`/
-        // `breathy` are turned off by triggerSkip for a snappier feel.
-        flute(freq, volume, duration, opts = {}) {
-            if (!this.ctx || this.isMuted) return;
-            const { breathy = true, glide = false, vibrato = true } = opts;
-            const now = this.ctx.currentTime;
-            const attack = opts.attack !== undefined ? opts.attack : Math.min(0.22, duration * 0.35);
-
-            const osc = this.ctx.createOscillator();
-            osc.type = 'sine';
-            if (glide) {
-                osc.frequency.setValueAtTime(freq * (0.89 + Math.random() * 0.04), now);
-                osc.frequency.exponentialRampToValueAtTime(freq, now + Math.min(0.18, attack));
-            } else {
-                osc.frequency.setValueAtTime(freq, now);
-            }
-
-            if (vibrato) {
-                const vLfo = this.ctx.createOscillator();
-                vLfo.type = 'sine';
-                vLfo.frequency.value = 5 + Math.random() * 1.2;
-                const vGain = this.ctx.createGain();
-                vGain.gain.setValueAtTime(0, now);
-                vGain.gain.linearRampToValueAtTime(freq * 0.012, now + duration * 0.5);
-                vLfo.connect(vGain);
-                vGain.connect(osc.frequency);
-                vLfo.start(now);
-                vLfo.stop(now + duration + 0.2);
-            }
-
-            const gain = this.ctx.createGain();
-            gain.gain.setValueAtTime(0, now);
-            gain.gain.linearRampToValueAtTime(volume, now + attack);
-            gain.gain.setValueAtTime(volume, now + Math.max(attack, duration - 0.15));
-            gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.15);
-            osc.connect(gain);
-            gain.connect(this.masterGain);
-            gain.connect(this.delayNode);
-            osc.start(now);
-            osc.stop(now + duration + 0.2);
-
-            if (breathy) {
-                const breathSrc = this.ctx.createBufferSource();
-                breathSrc.buffer = this.noiseBuffer;
-                const breathFilter = this.ctx.createBiquadFilter();
-                breathFilter.type = 'bandpass';
-                breathFilter.frequency.value = freq * 2.2;
-                breathFilter.Q.value = 0.7;
-                const breathGain = this.ctx.createGain();
-                breathGain.gain.setValueAtTime(0, now);
-                breathGain.gain.linearRampToValueAtTime(volume * 0.35, now + attack);
-                breathGain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.15);
-                breathSrc.connect(breathFilter);
-                breathFilter.connect(breathGain);
-                breathGain.connect(this.masterGain);
-                breathSrc.start(now);
-                breathSrc.stop(now + duration + 0.2);
-            }
-        },
-
         triggerThrow() {
             if (!this.ctx || this.isMuted) return;
             const now = this.ctx.currentTime;
@@ -383,18 +319,6 @@
             gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
             src.connect(filter); filter.connect(gain); gain.connect(this.masterGain);
             src.start(now); src.stop(now + 0.3);
-        },
-
-        triggerSkip(count) {
-            // A bright pentatonic run that climbs an octave every 5 skips --
-            // stays pleasant/consonant even on a long streak instead of just
-            // linearly sliding the pitch up. Short attack and no vibrato/glide
-            // so a fast multi-skip streak still reads as crisp, responsive
-            // taps rather than a series of slow blown notes.
-            const scale = [523.25, 587.33, 659.25, 783.99, 880.0]; // C pentatonic
-            const idx = (count - 1) % scale.length;
-            const octave = Math.floor((count - 1) / scale.length);
-            this.flute(scale[idx] * Math.pow(2, octave * 0.5), 0.16, 0.22, { attack: 0.025, vibrato: false, glide: false, breathy: true });
         },
 
         triggerSplash() {
@@ -1186,7 +1110,6 @@
                     document.getElementById('hud-best').textContent = String(sessionBest);
                 }
                 spawnRipple(stone.x, stone.z, false);
-                AudioEngine.triggerSkip(stone.skips);
             } else {
                 spawnRipple(stone.x, stone.z, true);
                 AudioEngine.triggerSplash();
