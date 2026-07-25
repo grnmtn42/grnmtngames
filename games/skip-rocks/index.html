@@ -151,16 +151,16 @@
     // Same architectural pattern as Signal Lost's AudioEngine (lazy ctx init
     // gated on a real user gesture, shared delay/filter bus, small
     // helper-wrapped one-shot triggers) but a wetland nature soundscape
-    // instead of music: a quiet wind/water bed, with crickets, frogs,
-    // occasional cicada swells, and a rare loon call, each on its own
-    // independently-randomized schedule. Unlike Signal Lost's toggle (which
+    // instead of music: a quiet wind/water bed, with crickets, frogs, and
+    // occasional cicada swells, each on its own independently-randomized
+    // schedule. Unlike Signal Lost's toggle (which
     // defaults off), this defaults ON -- ambience is core to the pitch, so
     // it should start the moment the gesture-gate is satisfied (the
     // player's first throw) rather than needing an extra tap.
     const AudioEngine = {
         ctx: null, masterGain: null, delayNode: null, delayFilter: null, delayFeedback: null,
         noiseBuffer: null, windGain: null,
-        cricketTimer: null, frogTimer: null, cicadaTimer: null, loonTimer: null,
+        cricketTimer: null, frogTimer: null, cicadaTimer: null,
         isMuted: false,
 
         init() {
@@ -194,15 +194,14 @@
             for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
 
             // A wetland-at-dusk soundscape instead of a melody -- a quiet
-            // wind/water bed underneath, with crickets, frogs, occasional
-            // cicada swells, and a rare loon call layered on top, each on
-            // its own independent, randomly-timed schedule so they never
-            // lock into a repeating pattern together.
+            // wind/water bed underneath, with crickets, frogs, and
+            // occasional cicada swells layered on top, each on its own
+            // independent, randomly-timed schedule so they never lock into
+            // a repeating pattern together.
             this.startWindBed();
             this.scheduleCrickets();
             this.scheduleFrogs();
             this.scheduleCicadas();
-            this.scheduleLoon();
         },
 
         startWindBed() {
@@ -304,42 +303,6 @@
         scheduleCicadas() {
             this.cicadaSwell();
             this.cicadaTimer = setTimeout(() => this.scheduleCicadas(), 12000 + Math.random() * 14000);
-        },
-
-        // The classic loon "wail" -- a long, breathy, rising-then-falling
-        // glide with a slow vibrato and a touch of echo, since the real
-        // call is famous for carrying across open water. Rare and mostly a
-        // Dusk Cove thing, so it stays a special moment rather than clutter.
-        loonCall() {
-            if (!this.ctx || this.isMuted) return;
-            const now = this.ctx.currentTime;
-            const osc = this.ctx.createOscillator();
-            osc.type = 'sine';
-            const startF = 480 + Math.random() * 60, peakF = 650 + Math.random() * 80, endF = 380 + Math.random() * 40;
-            osc.frequency.setValueAtTime(startF, now);
-            osc.frequency.linearRampToValueAtTime(peakF, now + 0.7);
-            osc.frequency.linearRampToValueAtTime(endF, now + 2.0);
-            const vib = this.ctx.createOscillator();
-            vib.type = 'sine';
-            vib.frequency.value = 5.5;
-            const vibGain = this.ctx.createGain();
-            vibGain.gain.value = 12;
-            vib.connect(vibGain); vibGain.connect(osc.frequency);
-            const gain = this.ctx.createGain();
-            gain.gain.setValueAtTime(0.0001, now);
-            gain.gain.linearRampToValueAtTime(0.07, now + 0.3);
-            gain.gain.linearRampToValueAtTime(0.07, now + 1.6);
-            gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.2);
-            osc.connect(gain);
-            gain.connect(this.masterGain);
-            gain.connect(this.delayNode);
-            osc.start(now); vib.start(now);
-            osc.stop(now + 2.3); vib.stop(now + 2.3);
-        },
-        scheduleLoon() {
-            const isNight = typeof currentScene !== 'undefined' && currentScene.celestial && currentScene.celestial.type === 'moon';
-            if (Math.random() < (isNight ? 0.6 : 0.25)) this.loonCall();
-            this.loonTimer = setTimeout(() => this.scheduleLoon(), 22000 + Math.random() * 22000);
         },
 
         // A breathy flute-toned chime -- no longer the ambient track (that's
