@@ -150,16 +150,17 @@
     // --- Audio engine --------------------------------------------------
     // Same architectural pattern as Signal Lost's AudioEngine (lazy ctx init
     // gated on a real user gesture, shared delay/filter bus, small
-    // helper-wrapped one-shot triggers) but ambient content instead of a
-    // rhythmic step sequencer: a slow drone/pad, a sparse generative
-    // pentatonic pluck line, and a quiet filtered-noise water/wind bed.
-    // Unlike Signal Lost's toggle (which defaults off), this defaults ON --
-    // ambient music is core to the pitch, so it should start the moment the
-    // gesture-gate is satisfied (the player's first throw) rather than
-    // needing an extra tap.
+    // helper-wrapped one-shot triggers) but a wetland nature soundscape
+    // instead of music: a quiet wind/water bed, with crickets, frogs,
+    // occasional cicada swells, and a rare loon call, each on its own
+    // independently-randomized schedule. Unlike Signal Lost's toggle (which
+    // defaults off), this defaults ON -- ambience is core to the pitch, so
+    // it should start the moment the gesture-gate is satisfied (the
+    // player's first throw) rather than needing an extra tap.
     const AudioEngine = {
         ctx: null, masterGain: null, delayNode: null, delayFilter: null, delayFeedback: null,
-        noiseBuffer: null, windGain: null, fluteTimer: null,
+        noiseBuffer: null, windGain: null,
+        cricketTimer: null, frogTimer: null, cicadaTimer: null, loonTimer: null,
         isMuted: false,
 
         init() {
@@ -192,11 +193,16 @@
             const data = this.noiseBuffer.getChannelData(0);
             for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
 
-            // No synth pad underneath -- a sustained chord read as "ambient
-            // pad," not "bamboo flute." Just the wind bed and the flute
-            // melody carry the whole piece.
+            // A wetland-at-dusk soundscape instead of a melody -- a quiet
+            // wind/water bed underneath, with crickets, frogs, occasional
+            // cicada swells, and a rare loon call layered on top, each on
+            // its own independent, randomly-timed schedule so they never
+            // lock into a repeating pattern together.
             this.startWindBed();
-            this.scheduleFlute();
+            this.scheduleCrickets();
+            this.scheduleFrogs();
+            this.scheduleCicadas();
+            this.scheduleLoon();
         },
 
         startWindBed() {
@@ -215,22 +221,133 @@
             src.start();
         },
 
-        // Sparse, randomly-timed phrases in a D minor pentatonic (the classic
-        // shakuhachi/bamboo-flute register) -- generative ambience, not a
-        // metric sequencer. Occasionally glides into a note from below,
-        // mimicking the pitch-bent attack ("meri") of a real bamboo flute.
-        scheduleFlute() {
-            const scale = [293.66, 349.23, 392.0, 440.0, 523.25]; // D F G A C
-            const freq = scale[Math.floor(Math.random() * scale.length)] * (Math.random() < 0.25 ? 2 : 1);
-            this.flute(freq, 0.1, 1.8 + Math.random() * 2.2, { glide: Math.random() < 0.4, vibrato: true, breathy: true });
-            this.fluteTimer = setTimeout(() => this.scheduleFlute(), 2600 + Math.random() * 5200);
+        // A trilling chirp: a short train of tone pulses rather than one
+        // continuous note, since that's literally how a cricket's chirp is
+        // produced (a rapid train of wing-scrape pulses), not a smooth tone.
+        cricketChirp() {
+            if (!this.ctx || this.isMuted) return;
+            const now = this.ctx.currentTime;
+            const pulses = 6 + Math.floor(Math.random() * 8);
+            const freq = 3800 + Math.random() * 900;
+            const interval = 0.032 + Math.random() * 0.014;
+            for (let i = 0; i < pulses; i++) {
+                const t = now + i * interval;
+                const osc = this.ctx.createOscillator();
+                osc.type = 'triangle';
+                osc.frequency.value = freq * (1 + (Math.random() - 0.5) * 0.02);
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.0001, t);
+                gain.gain.linearRampToValueAtTime(0.045, t + 0.004);
+                gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.022);
+                osc.connect(gain);
+                gain.connect(this.masterGain);
+                osc.start(t); osc.stop(t + 0.03);
+            }
+        },
+        scheduleCrickets() {
+            this.cricketChirp();
+            this.cricketTimer = setTimeout(() => this.scheduleCrickets(), 1500 + Math.random() * 2600);
         },
 
-        // The core bamboo-flute voice: a sine tone with a soft blown attack,
-        // vibrato that only fades in partway through the note (a straight
-        // tone first, like a real held note), and a breath-noise layer for
-        // airiness. `glide` approaches the pitch from below, `vibrato`/
-        // `breathy` can be turned off for the snappier skip-count notes.
+        // A low, slightly gravelly croak -- a sawtooth through a lowpass
+        // filter with a fast downward pitch slide, occasionally doubled for
+        // a "ribbit-ribbit".
+        frogCroak() {
+            if (!this.ctx || this.isMuted) return;
+            const now = this.ctx.currentTime;
+            const doCroak = (t, f0) => {
+                const osc = this.ctx.createOscillator();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(f0, t);
+                osc.frequency.exponentialRampToValueAtTime(f0 * 0.6, t + 0.12);
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = 550;
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.0001, t);
+                gain.gain.exponentialRampToValueAtTime(0.08, t + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.15);
+                osc.connect(filter); filter.connect(gain); gain.connect(this.masterGain);
+                osc.start(t); osc.stop(t + 0.18);
+            };
+            const baseFreq = 150 + Math.random() * 60;
+            doCroak(now, baseFreq);
+            if (Math.random() < 0.5) doCroak(now + 0.18, baseFreq * 1.05);
+        },
+        scheduleFrogs() {
+            this.frogCroak();
+            this.frogTimer = setTimeout(() => this.scheduleFrogs(), 4000 + Math.random() * 5500);
+        },
+
+        // Cicadas read less as discrete calls and more as a wave of
+        // bandpassed-noise buzz that swells in and fades back out over a
+        // few seconds -- a daytime sound, so it's skipped for Dusk Cove.
+        cicadaSwell() {
+            if (!this.ctx || this.isMuted) return;
+            if (typeof currentScene !== 'undefined' && currentScene.celestial && currentScene.celestial.type === 'moon') return;
+            const now = this.ctx.currentTime;
+            const src = this.ctx.createBufferSource();
+            src.buffer = this.noiseBuffer;
+            src.loop = true;
+            const filter = this.ctx.createBiquadFilter();
+            filter.type = 'bandpass';
+            filter.frequency.value = 3800 + Math.random() * 1300;
+            filter.Q.value = 4;
+            const gain = this.ctx.createGain();
+            const dur = 2.5 + Math.random() * 2.2;
+            gain.gain.setValueAtTime(0.0001, now);
+            gain.gain.linearRampToValueAtTime(0.035, now + dur * 0.4);
+            gain.gain.linearRampToValueAtTime(0.0001, now + dur);
+            src.connect(filter); filter.connect(gain); gain.connect(this.masterGain);
+            src.start(now); src.stop(now + dur + 0.1);
+        },
+        scheduleCicadas() {
+            this.cicadaSwell();
+            this.cicadaTimer = setTimeout(() => this.scheduleCicadas(), 12000 + Math.random() * 14000);
+        },
+
+        // The classic loon "wail" -- a long, breathy, rising-then-falling
+        // glide with a slow vibrato and a touch of echo, since the real
+        // call is famous for carrying across open water. Rare and mostly a
+        // Dusk Cove thing, so it stays a special moment rather than clutter.
+        loonCall() {
+            if (!this.ctx || this.isMuted) return;
+            const now = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            osc.type = 'sine';
+            const startF = 480 + Math.random() * 60, peakF = 650 + Math.random() * 80, endF = 380 + Math.random() * 40;
+            osc.frequency.setValueAtTime(startF, now);
+            osc.frequency.linearRampToValueAtTime(peakF, now + 0.7);
+            osc.frequency.linearRampToValueAtTime(endF, now + 2.0);
+            const vib = this.ctx.createOscillator();
+            vib.type = 'sine';
+            vib.frequency.value = 5.5;
+            const vibGain = this.ctx.createGain();
+            vibGain.gain.value = 12;
+            vib.connect(vibGain); vibGain.connect(osc.frequency);
+            const gain = this.ctx.createGain();
+            gain.gain.setValueAtTime(0.0001, now);
+            gain.gain.linearRampToValueAtTime(0.07, now + 0.3);
+            gain.gain.linearRampToValueAtTime(0.07, now + 1.6);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.2);
+            osc.connect(gain);
+            gain.connect(this.masterGain);
+            gain.connect(this.delayNode);
+            osc.start(now); vib.start(now);
+            osc.stop(now + 2.3); vib.stop(now + 2.3);
+        },
+        scheduleLoon() {
+            const isNight = typeof currentScene !== 'undefined' && currentScene.celestial && currentScene.celestial.type === 'moon';
+            if (Math.random() < (isNight ? 0.6 : 0.25)) this.loonCall();
+            this.loonTimer = setTimeout(() => this.scheduleLoon(), 22000 + Math.random() * 22000);
+        },
+
+        // A breathy flute-toned chime -- no longer the ambient track (that's
+        // the nature soundscape above), just the skip-count feedback voice
+        // now: a sine tone with a soft blown attack, vibrato that only
+        // fades in partway through the note, and a breath-noise layer for
+        // airiness. `glide` approaches the pitch from below; `vibrato`/
+        // `breathy` are turned off by triggerSkip for a snappier feel.
         flute(freq, volume, duration, opts = {}) {
             if (!this.ctx || this.isMuted) return;
             const { breathy = true, glide = false, vibrato = true } = opts;
