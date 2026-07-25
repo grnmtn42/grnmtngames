@@ -343,21 +343,40 @@
             src.start(now); src.stop(now + 0.2);
         },
 
-        // The bigger final splash when the stone runs out of steam and sinks.
+        // The bigger final "bloop" when the stone runs out of steam and
+        // sinks. A pure noise splash (which is all this used to be) has no
+        // pitch to it, so it just reads as generic hiss -- the actual
+        // signature of a "bloop" is a tone sliding down in pitch, like a
+        // bubble or drop sinking, so that's the star here, with just a
+        // touch of noise underneath for water texture rather than the
+        // whole sound.
         triggerSplash() {
             if (!this.ctx || this.isMuted) return;
             const now = this.ctx.currentTime;
+
+            const osc = this.ctx.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(520, now);
+            osc.frequency.exponentialRampToValueAtTime(85, now + 0.24);
+            const toneGain = this.ctx.createGain();
+            toneGain.gain.setValueAtTime(0.0001, now);
+            toneGain.gain.linearRampToValueAtTime(0.34, now + 0.014);
+            toneGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
+            osc.connect(toneGain);
+            toneGain.connect(this.masterGain);
+            osc.start(now); osc.stop(now + 0.32);
+
             const src = this.ctx.createBufferSource();
             src.buffer = this.noiseBuffer;
             const filter = this.ctx.createBiquadFilter();
             filter.type = 'lowpass';
-            filter.frequency.setValueAtTime(2500, now);
-            filter.frequency.exponentialRampToValueAtTime(150, now + 0.5);
+            filter.frequency.setValueAtTime(1800, now);
+            filter.frequency.exponentialRampToValueAtTime(200, now + 0.2);
             const gain = this.ctx.createGain();
-            gain.gain.setValueAtTime(0.32, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+            gain.gain.setValueAtTime(0.09, now);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
             src.connect(filter); filter.connect(gain); gain.connect(this.masterGain);
-            src.start(now); src.stop(now + 0.7);
+            src.start(now); src.stop(now + 0.25);
         },
 
         toggleMute() {
