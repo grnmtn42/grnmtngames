@@ -1,4 +1,4 @@
-# Green Mountain Games
+# Green Mountain Video Games
 
 A free browser games site: static landing page, zero-install games, no accounts.
 Every game is a self-contained, dependency-free HTML file — open it directly or
