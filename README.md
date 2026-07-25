@@ -70,6 +70,6 @@ optional global-leaderboard setup via Supabase.
 ### [Skip Rocks](games/skip-rocks/)
 
 A quiet counterpart to Signal Lost: skip stones across the water from the
-shoreline to a generative ambient score, chasing your best streak for the
-session. No accounts, no leaderboard, no way to lose — see its
-[README](games/skip-rocks/README.md) for controls.
+shoreline to a natural soundscape of crickets, frogs, and splashes, chasing
+your best streak for the session. No accounts, no leaderboard, no way to
+lose — see its [README](games/skip-rocks/README.md) for controls.

@@ -1,8 +1,9 @@
 # Skip Rocks
 
 A free, single-file browser toy: skip stones across the water from a first-person
-view on the shore, to a soft generative ambient score. No build step, no
-dependencies — just open `index.html` (or the hosted URL) and play.
+view on the shore, to a natural soundscape of crickets, frogs, and occasional
+cicada swells. No build step, no dependencies — just open `index.html` (or the
+hosted URL) and play.
 
 ## Play
 
@@ -16,7 +17,7 @@ Open `index.html` in a browser, or serve the repo root locally (see the top-leve
 - Works identically with mouse or a single finger on touch devices.
 - The circular arrow button (bottom-right) switches to a different scene on
   demand; it also rotates on its own every few throws.
-- The speaker icon mutes/unmutes the ambient music and sound effects.
+- The speaker icon mutes/unmutes the ambient soundscape and sound effects.
 
 There's no menu, no health, no enemies — just the current throw's skip count and
 your best streak for the session, shown in the top-left corner.
@@ -32,6 +33,10 @@ or global, by design.
 ## Scenes
 
 Five procedurally-drawn environments (misty dawn lake, golden afternoon pond,
-autumn shoreline, alpine tarn, dusk cove) rotate automatically, each with its own
-small set of decorative wildlife (ducks, dragonflies, a heron, jumping fish,
-birds, fireflies, bats) — purely ambient, nothing to interact with.
+autumn shoreline, alpine tarn, dusk cove) rotate automatically, each with a sun
+and drifting clouds or a moon and twinkling stars depending on time of day, and
+its own set of wildlife (ducks, swans, turtles, a heron, dragonflies, jumping
+fish, birds, crows, fireflies, bats, moths) that roam the scene on their own.
+A low-flying stone that passes close enough startles a nearby animal into
+fleeing for a few seconds before it settles back into its usual wandering —
+otherwise everything's purely ambient, nothing to chase down.
