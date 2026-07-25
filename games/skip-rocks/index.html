@@ -573,6 +573,32 @@
         });
     }
 
+    // A ripple drawn as an actual traveling wave along its length (sampled
+    // points smoothed into a continuous curve via quadratic-curve-through-
+    // midpoints), not a straight line rigidly shifted up and down as a
+    // whole -- that's what read as "lines" rather than water.
+    function drawRippleLine(y, amplitude, wavelength, phase) {
+        const w = canvas.width;
+        const step = 22;
+        const points = [];
+        for (let x = 0; x <= w; x += step) {
+            points.push({ x, y: y + Math.sin(x / wavelength + phase) * amplitude });
+        }
+        const lastX = points[points.length - 1].x;
+        if (lastX < w) points.push({ x: w, y: y + Math.sin(w / wavelength + phase) * amplitude });
+
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        for (let i = 1; i < points.length - 1; i++) {
+            const midX = (points[i].x + points[i + 1].x) / 2;
+            const midY = (points[i].y + points[i + 1].y) / 2;
+            ctx.quadraticCurveTo(points[i].x, points[i].y, midX, midY);
+        }
+        const last = points[points.length - 1];
+        ctx.lineTo(last.x, last.y);
+        ctx.stroke();
+    }
+
     function drawScene(scene, alpha) {
         const w = canvas.width, h = canvas.height;
         ctx.save();
@@ -644,11 +670,10 @@
         ctx.lineWidth = 1;
         for (let i = 0; i < 8; i++) {
             const fy = horizonY + (shoreY - horizonY) * (i / 8) * (i / 8);
-            const shimmer = Math.sin(sceneTime * 0.6 + i * 1.7) * 8;
-            ctx.beginPath();
-            ctx.moveTo(0, fy);
-            ctx.lineTo(w, fy + shimmer);
-            ctx.stroke();
+            const wavelength = 70 + i * 16;
+            const amplitude = 3.5 + (i % 3) * 2;
+            const speed = 0.45 + (i % 4) * 0.12;
+            drawRippleLine(fy, amplitude, wavelength, sceneTime * speed + i * 1.7);
         }
 
         if (scene.mist) {
