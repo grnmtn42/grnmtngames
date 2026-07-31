@@ -4287,9 +4287,60 @@ function endLevel(won) {
 }
 
 // ---------------------------------------------------------------------------
-// Start screen + local leaderboard (localStorage-only -- LEADERBOARD_CONFIG/Supabase
-// wiring is a deliberately deferred, separately-confirmed later step per the plan).
+// Start screen + leaderboard: local per-device history (always on) plus an optional
+// Supabase-backed global board, same pattern as games/signal-lost/index.html --
+// reuses that exact Supabase project (the anon key is meant to be public/embedded
+// client-side, protected by the table's own RLS policies, not by secrecy) with its
+// own table, angry_serfs_scores, rather than standing up a second project. See
+// README.md for the SQL that creates it.
 // ---------------------------------------------------------------------------
+const LEADERBOARD_CONFIG = {
+    SUPABASE_URL: 'https://gzzynrfzbaoqtbdcwevv.supabase.co',
+    SUPABASE_ANON_KEY: 'sb_publishable_N3GSHBqFTwaCHPpCG9pEwA_99Bs3beV'
+};
+function isGlobalLeaderboardEnabled() {
+    return !!(LEADERBOARD_CONFIG.SUPABASE_URL && LEADERBOARD_CONFIG.SUPABASE_ANON_KEY);
+}
+async function fetchGlobalTop(daily) {
+    if (!isGlobalLeaderboardEnabled()) return null;
+    try {
+        let url = `${LEADERBOARD_CONFIG.SUPABASE_URL}/rest/v1/angry_serfs_scores?select=player_name,score,survivors,heroes,difficulty,victory,created_at&order=score.desc&limit=10`;
+        if (daily) {
+            const start = new Date(); start.setHours(0, 0, 0, 0);
+            url += `&created_at=gte.${start.toISOString()}`;
+        }
+        const res = await fetch(url, {
+            headers: {
+                apikey: LEADERBOARD_CONFIG.SUPABASE_ANON_KEY,
+                Authorization: `Bearer ${LEADERBOARD_CONFIG.SUPABASE_ANON_KEY}`
+            }
+        });
+        if (!res.ok) return null;
+        const rows = await res.json();
+        return rows.map(r => ({ name: r.player_name, score: r.score, survivors: r.survivors, heroes: r.heroes, difficulty: r.difficulty, won: !!r.victory }));
+    } catch (e) { return null; }
+}
+async function submitGlobalScore(name, score, survivors, heroes, difficulty, won) {
+    if (!isGlobalLeaderboardEnabled()) return { ok: false };
+    try {
+        const res = await fetch(`${LEADERBOARD_CONFIG.SUPABASE_URL}/rest/v1/angry_serfs_scores`, {
+            method: 'POST',
+            headers: {
+                apikey: LEADERBOARD_CONFIG.SUPABASE_ANON_KEY,
+                Authorization: `Bearer ${LEADERBOARD_CONFIG.SUPABASE_ANON_KEY}`,
+                'Content-Type': 'application/json',
+                Prefer: 'return=minimal'
+            },
+            body: JSON.stringify({ player_name: name, score, survivors, heroes, difficulty, victory: !!won })
+        });
+        if (res.ok) return { ok: true };
+        // Surface the actual rejection reason (e.g. a CHECK constraint violation) instead of
+        // treating every non-2xx as a generic "unreachable" -- these have very different fixes.
+        let reason = '';
+        try { reason = (await res.json()).message || ''; } catch (e) {}
+        return { ok: false, reason };
+    } catch (e) { return { ok: false, reason: '' }; }
+}
 
 // A reward, not a testing shortcut -- hidden (see #level-select-row's display:none) until the
 // player has beaten the whole game once, on any difficulty (see beatGame in showRunOverScreen),
@@ -4400,9 +4451,14 @@ function renderLeaderboardList(elId, entries) {
         return `<li>🏆 ${escapeHtml(e.name)} -- ${e.score} (${tier.label}, ${e.heroes || 0} hero${e.heroes === 1 ? '' : 'es'}, ${e.survivors || 0} survivor${e.survivors === 1 ? '' : 's'})</li>`;
     }).join('');
 }
-function refreshLeaderboardPanels() {
+async function refreshLeaderboardPanels() {
     renderLeaderboardList('leaderboard-alltime', getLocalTopAllTime());
     renderLeaderboardList('leaderboard-daily', getLocalTopDaily());
+    if (isGlobalLeaderboardEnabled()) {
+        const [allTime, daily] = await Promise.all([fetchGlobalTop(false), fetchGlobalTop(true)]);
+        if (allTime) renderLeaderboardList('leaderboard-alltime', allTime);
+        if (daily) renderLeaderboardList('leaderboard-daily', daily);
+    }
 }
 
 // Set by showRunOverScreen so the score-submit handler (fired later, on a separate click) knows
@@ -4497,8 +4553,20 @@ document.getElementById('submit-score-btn').addEventListener('click', () => {
     };
     saveLocalScore(entry);
     document.getElementById('submit-score-btn').disabled = true;
-    document.getElementById('submit-status').textContent = 'Saved to your local leaderboard.';
+    const statusEl = document.getElementById('submit-status');
+    statusEl.textContent = isGlobalLeaderboardEnabled() ? 'Saved locally. Submitting to global leaderboard...' : 'Saved to your local leaderboard.';
     refreshLeaderboardPanels();
+
+    if (isGlobalLeaderboardEnabled()) {
+        submitGlobalScore(name, entry.score, entry.survivors, entry.heroes, entry.difficulty, entry.won).then(result => {
+            statusEl.textContent = result.ok
+                ? 'Submitted to the global leaderboard!'
+                : result.reason
+                    ? `Global leaderboard rejected the submission (${result.reason}) -- saved locally only.`
+                    : 'Global leaderboard unreachable (your browser or an extension may be blocking it -- check ad-blocker/tracker-protection settings) -- saved locally only.';
+            refreshLeaderboardPanels();
+        });
+    }
 });
 
 document.getElementById('level-end-btn').addEventListener('click', () => {
