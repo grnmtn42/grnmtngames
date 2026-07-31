@@ -845,7 +845,10 @@ function setupLevel1() {
     const { zEntities, gates } = buildSquareFortMap({
         center: LEVEL1_CENTER, halfSide: LEVEL1_HALF_SIDE, gateSide: LEVEL1_GATE_SIDE, gateHalfWidth: 70,
         gateRadius: 85, gateHp: 550, towerHp: 280,
-        hutSpots: [{ dx: -140, dy: -90 }, { dx: 90, dy: -140 }, { dx: -60, dy: 60 }, { dx: 150, dy: 40 }],
+        // A tidy 2x2 grid rather than a hand-scattered cluster -- fixed, symmetric positions per
+        // the user's request, still clear of the barn/livestock (north) and the gate corridor
+        // (south) by the same margins the old scatter used.
+        hutSpots: [{ dx: -110, dy: -100 }, { dx: 110, dy: -100 }, { dx: -110, dy: 60 }, { dx: 110, dy: 60 }],
         // Pure atmosphere -- a small farm cluster clear of the huts, the gate-approach corridor,
         // and the walls (see buildSquareFortMap's barnSpots/livestockSpots comment).
         barnSpots: [{ dx: 0, dy: -220 }],
@@ -890,7 +893,10 @@ function setupLevel2() {
         // gate-flanking posts right at the mouth of the gate. Found via a live repro.
         center: LEVEL2_CENTER, halfSide: LEVEL2_HALF_SIDE, gateSide: LEVEL2_GATE_SIDE, gateHalfWidth: 103,
         gateRadius: 95, gateHp: 750, towerHp: 360,
-        hutSpots: [{ dx: -180, dy: -110 }, { dx: 120, dy: -170 }, { dx: -90, dy: 90 }, { dx: 190, dy: 60 }, { dx: -150, dy: 170 }],
+        // A symmetric quincunx (four corners + center) instead of a hand-scattered cluster --
+        // fixed grid positions per the user's request, kept clear of the interior towers (south,
+        // dy 150) and the barn/livestock (north) by the same margins the old scatter used.
+        hutSpots: [{ dx: -150, dy: -120 }, { dx: 150, dy: -120 }, { dx: -150, dy: 80 }, { dx: 150, dy: 80 }, { dx: 0, dy: -20 }],
         // All three sit off the gate's direct line to the center (which is dx=0) so they read as
         // flanking cover for the inner approach rather than a second closed chokepoint -- spaced
         // clear of both the gate-flanking towers and the nearby hut spots above. The third one
@@ -955,7 +961,12 @@ function setupLevel3() {
         // Pulled out past the keep's own half-side (170), so nothing sits inside or embedded in
         // the keep wall -- levels 1-2 cluster huts near the shared center, which would now be
         // inside the keep itself.
-        hutSpots: [{ dx: -260, dy: -160 }, { dx: 260, dy: -180 }, { dx: -220, dy: 220 }, { dx: 300, dy: 140 }, { dx: 0, dy: -300 }],
+        // A symmetric square (four corners) plus one due north of the keep, instead of a
+        // hand-scattered cluster -- fixed grid positions per the user's request. All five clear
+        // the keep by at least the same 50px margin the old scatter's tightest corner already
+        // proved safe, and stay well clear of the barn/livestock (east) and the gate/wallTowers
+        // (south) too.
+        hutSpots: [{ dx: -220, dy: -220 }, { dx: 220, dy: -220 }, { dx: -220, dy: 220 }, { dx: 220, dy: 220 }, { dx: 0, dy: -280 }],
         // Pure atmosphere -- tucked into the northeast corner of the outer ring, well clear of the
         // keep, the existing huts, and the outer wall.
         barnSpots: [{ dx: 380, dy: -50 }],
@@ -1061,7 +1072,12 @@ function setupLevel4() {
         center: LEVEL4_CENTER, halfSide: LEVEL4_HALF_SIDE, gateSide: LEVEL4_GATE_SIDE, gateHalfWidth: 123,
         gateRadius: 100, gateHp: 1000, towerHp: 480, stoneTheme: true,
         wallTowers: [{ side: 'south', offset: -260 }, { side: 'south', offset: 260 }],
-        hutSpots: [{ dx: -260, dy: -160 }, { dx: 260, dy: -180 }, { dx: -220, dy: 220 }, { dx: 300, dy: 140 }, { dx: 0, dy: -300 }],
+        // A symmetric square (four corners) plus one due north of the keep, instead of a
+        // hand-scattered cluster -- fixed grid positions per the user's request. All five clear
+        // the keep by at least the same 50px margin the old scatter's tightest corner already
+        // proved safe, and stay well clear of the barn/livestock (east) and the gate/wallTowers
+        // (south) too.
+        hutSpots: [{ dx: -220, dy: -220 }, { dx: 220, dy: -220 }, { dx: -220, dy: 220 }, { dx: 220, dy: 220 }, { dx: 0, dy: -280 }],
         barnSpots: [{ dx: 380, dy: -50 }],
         // Trimmed from 5 to 3 -- see level 1's livestockSpots comment.
         livestockSpots: [
@@ -1180,7 +1196,12 @@ function setupLevel5() {
         center: LEVEL5_CENTER, halfSide: LEVEL5_HALF_SIDE, gateSide: LEVEL5_GATE_SIDE, gateHalfWidth: 123,
         gateRadius: 100, gateHp: 1000, towerHp: 480, stoneTheme: true,
         wallTowers: [{ side: 'south', offset: -260 }, { side: 'south', offset: 260 }],
-        hutSpots: [{ dx: -260, dy: -160 }, { dx: 260, dy: -180 }, { dx: -220, dy: 220 }, { dx: 300, dy: 140 }, { dx: 0, dy: -300 }],
+        // A symmetric square (four corners) plus one due north of the keep, instead of a
+        // hand-scattered cluster -- fixed grid positions per the user's request. All five clear
+        // the keep by at least the same 50px margin the old scatter's tightest corner already
+        // proved safe, and stay well clear of the barn/livestock (east) and the gate/wallTowers
+        // (south) too.
+        hutSpots: [{ dx: -220, dy: -220 }, { dx: 220, dy: -220 }, { dx: -220, dy: 220 }, { dx: 220, dy: 220 }, { dx: 0, dy: -280 }],
         barnSpots: [{ dx: 380, dy: -50 }],
         livestockSpots: [
             { dx: 350, dy: -90, species: 'cow' },
@@ -2198,7 +2219,7 @@ function updateAttackMarkers() {
 // Fires once when the king dies (see processPendingKills) -- a brief floating speech bubble,
 // same timed-life idiom as attackMarkers (countdown in frames, filtered out at 0), just with a
 // different payload (text, its own slow upward float) instead of a growing/fading ring.
-const KING_QUOTE_LIFE = 180; // 3s at 60fps
+const KING_QUOTE_LIFE = 225; // 3.75s at 60fps -- bumped up from 3s at the user's request, more time to read
 const KING_DEATH_QUOTES = [
     "Zounds! Mine crown rolls better than mine legs did.",
     "Tell the jester -- he's fired.",
