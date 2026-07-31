@@ -10,6 +10,7 @@ serve the repo root locally.
 /                       landing page (this repo's root index.html)
 /games/signal-lost/     Signal Lost — the first game
 /games/skip-rocks/      Skip Rocks — the second game
+/games/angry-serfs/     Angry Serfs — the third game
 ```
 
 Each game lives in its own folder under `games/` with its own `index.html` and
@@ -73,3 +74,12 @@ A quiet counterpart to Signal Lost: skip stones across the water from the
 shoreline to a natural soundscape of crickets, frogs, and splashes, chasing
 your best streak for the session. No accounts, no leaderboard, no way to
 lose — see its [README](games/skip-rocks/README.md) for controls.
+
+### [Angry Serfs](games/angry-serfs/)
+
+A 90s-style real-time-strategy castle siege: storm the same escalating
+fortification across five levels, buying units and siege equipment before
+each battle, breaking through gate after gate, and facing the King himself
+on the final assault. Permadeath survivors carry into the next level — see
+its [README](games/angry-serfs/README.md) for controls, rules, and the
+leaderboard's Supabase setup.
