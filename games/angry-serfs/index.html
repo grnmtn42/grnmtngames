@@ -160,7 +160,10 @@
        palette to match its existing HUD chrome. */
     #touch-controls { display: none; }
     body.touch-mode #touch-controls { display: block; }
-    body.touch-mode #battle-hud { bottom: 152px; }
+    /* On touch the joystick/hotbuttons already own the bottom of the screen, and tapping near
+       either while glancing at Army/Selected counts risks a mis-tap -- moving the HUD to the
+       top-left keeps it clear of both and out of the way of one-handed thumb reach. */
+    body.touch-mode #battle-hud { top: 8px; left: 8px; bottom: auto; }
 
     #joystick-zone {
         position: fixed; left: 22px; bottom: 22px;
@@ -3894,33 +3897,14 @@ joystickZone.addEventListener('touchend', e => {
 joystickZone.addEventListener('touchcancel', e => { e.preventDefault(); endJoystick(); }, { passive: false });
 
 // One button per unit type the player currently has alive (not the full fixed roster --
-// nothing to tap for a type you don't own). Tapping adds one more unit of that type to the
-// selection (switching to a fresh same-type selection first if the current selection is of a
-// different type, rather than mixing types); holding jumps straight to selecting every unit of
-// that type, reusing the same selectAllOfType the desktop double-click gesture uses.
+// nothing to tap for a type you don't own). Either a tap or a hold selects every living unit of
+// that type -- a single, predictable action per button (no separate "add one" gesture to learn),
+// reusing the same selectAllOfType the desktop double-click gesture uses.
 const UNIT_HOTBUTTON_ICON = { peasant: '\u{1F9D1}‍\u{1F33E}', infantry: '\u{1F6E1}️', spearman: '\u{1F531}', archer: '\u{1F3F9}', cavalry: '\u{1F40E}' };
-const HOTBUTTON_HOLD_MS = 450;
-
-function hotButtonAddOne(type) {
-    const already = new Set(selection.units.filter(u => u.type === type));
-    const next = entities.units.find(u => u.side === playerSide && u.type === type && u.hp > 0 && !already.has(u));
-    if (!next) return;
-    if (selection.units.some(u => u.type !== type)) setSelection([next]);
-    else unionIntoSelection([next]);
-}
 
 function bindUnitHotButton(btn, type) {
-    let holdTimer = null, didHold = false;
-    btn.addEventListener('pointerdown', e => {
-        e.preventDefault();
-        didHold = false;
-        holdTimer = setTimeout(() => { didHold = true; selectAllOfType(type); }, HOTBUTTON_HOLD_MS);
-    });
-    btn.addEventListener('pointerup', () => {
-        clearTimeout(holdTimer);
-        if (!didHold) hotButtonAddOne(type);
-    });
-    btn.addEventListener('pointercancel', () => clearTimeout(holdTimer));
+    btn.addEventListener('pointerdown', e => e.preventDefault());
+    btn.addEventListener('pointerup', () => selectAllOfType(type));
 }
 
 // Rebuilding innerHTML every frame would be wasteful and would also blow away any in-progress
