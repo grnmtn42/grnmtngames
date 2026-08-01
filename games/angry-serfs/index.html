@@ -110,6 +110,8 @@
     #submit-status { margin-top: 6px; font-size: 12px; color: #b8a888; }
     #level-end-qualify-msg { font-size: 13px; color: #b8a888; margin: 4px 0 0; }
     #leaderboard-panels { margin-top: 16px; border-top: 1px solid #3b2f1e; padding-top: 10px; }
+    #leaderboard-explainer { font-size: 12px; line-height: 1.5; color: #a8987a; margin: 0 0 12px; }
+    #leaderboard-explainer strong { color: #cbb98f; }
     #leaderboard-panels h3 { font-size: 12px; color: #d9a15c; text-transform: uppercase; letter-spacing: 0.5px; }
     #leaderboard-panels ol { font-size: 12px; margin: 6px 0 14px 20px; color: #cbb98f; }
     #leaderboard-panels li { padding: 2px 0; }
@@ -224,6 +226,7 @@
         </div>
         <button id="start-game-btn" class="primary-btn">Begin the Siege</button>
         <button id="howto-open-btn" class="secondary-btn">How to Play</button>
+        <button id="view-leaderboard-btn" class="secondary-btn">View Leaderboard</button>
         <div id="level-select-row">
             <label for="level-select-dropdown">Jump to level</label>
             <select id="level-select-dropdown"></select>
@@ -303,6 +306,14 @@
         </div>
 
         <div id="leaderboard-panels">
+            <p id="leaderboard-explainer">Score adds up across all 5 levels: a base amount for
+               clearing each one, a bonus for beating that level's target time, and a bonus per
+               surviving unit -- then, once you beat the whole game, your total is multiplied by
+               your difficulty (Normal x1, Hard x1.5, Impossible x3) for your final submitted
+               score. <strong>Survivors</strong> are units still standing at the end of level 5
+               (siege equipment doesn't count). <strong>Heroes</strong> are survivors who've
+               fought since level 1 -- a unit bought or added in a later level doesn't count as a
+               hero even if it lives to the end.</p>
             <h3>All-Time Top 10</h3>
             <ol id="leaderboard-alltime"></ol>
             <h3>Today's Top 10</h3>
@@ -4409,6 +4420,10 @@ document.getElementById('howto-open-btn').addEventListener('click', () => {
     document.getElementById('start-screen').style.display = 'none';
     document.getElementById('howto-screen').style.display = 'flex';
 });
+document.getElementById('view-leaderboard-btn').addEventListener('click', () => {
+    document.getElementById('start-screen').style.display = 'none';
+    showLeaderboardOnlyScreen();
+});
 document.getElementById('howto-close-btn').addEventListener('click', () => {
     document.getElementById('howto-screen').style.display = 'none';
     document.getElementById('start-screen').style.display = 'flex';
@@ -4536,6 +4551,24 @@ function showLevelCompleteScreen(levelScore, survivorCount, timeFramesTaken) {
     document.getElementById('level-end-screen').style.display = 'flex';
 }
 
+// Lets a visitor check the leaderboard without playing a run -- reuses the same overlay/panels
+// a real run-over screen shows (so there's only one leaderboard renderer to keep in sync), just
+// with the run-specific title/stats/qualify-message/submit-row all cleared or hidden and the
+// bottom button repurposed as a plain "Back" instead of "Play Again"/"Continue".
+function showLeaderboardOnlyScreen() {
+    document.getElementById('level-end-title').textContent = 'Leaderboard';
+    document.getElementById('level-end-stats').textContent = '';
+    document.getElementById('level-end-qualify-msg').textContent = '';
+    document.getElementById('level-end-submit-row').style.display = 'none';
+    document.getElementById('leaderboard-panels').style.display = '';
+    const btn = document.getElementById('level-end-btn');
+    btn.textContent = 'Back';
+    btn.dataset.mode = 'view-back';
+
+    refreshLeaderboardPanels();
+    document.getElementById('level-end-screen').style.display = 'flex';
+}
+
 document.getElementById('submit-score-btn').addEventListener('click', () => {
     const input = document.getElementById('player-name-input');
     let name = (input.value || '').trim().slice(0, 16);
@@ -4577,6 +4610,14 @@ document.getElementById('submit-score-btn').addEventListener('click', () => {
 document.getElementById('level-end-btn').addEventListener('click', () => {
     const mode = document.getElementById('level-end-btn').dataset.mode;
     document.getElementById('level-end-screen').style.display = 'none';
+
+    // Just came from the start screen to look at the leaderboard, not from a finished run --
+    // nothing was played, so there's no in-progress level state or persistentArmy to clean up.
+    if (mode === 'view-back') {
+        document.getElementById('start-screen').style.display = 'flex';
+        return;
+    }
+
     // Clears the level just played (its units/corpses/particles/projectiles), not the level
     // being advanced to -- each level's own bag is otherwise built once at module load and
     // never touched again on its own, so a future replay of this same level via "Play Again"
