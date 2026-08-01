@@ -270,6 +270,9 @@
                 battering ram and catapult) in the shop before each battle.</li>
             <li>Permadeath -- a unit that dies is gone for good. Survivors carry into the next
                 level on top of that level's own budget, so keeping units alive pays off.</li>
+            <li>A unit that started on level 1 and is still alive on a later level carries a small
+                gold star -- that's who's actually on track to become a Hero if they make it to
+                the end of level 5, so protect them.</li>
             <li>Siege equipment doesn't carry over between levels -- it's a one-battle rental,
                 bought fresh each time.</li>
             <li>Pick a difficulty before you start: harder difficulties shrink your budget bonus
@@ -3192,6 +3195,18 @@ function drawKingRegalia(u, r) {
     ctx.closePath(); ctx.fill(); ctx.stroke();
 }
 
+// A compact 5-point star, used to badge hero-track units in drawUnit -- point-up, outer radius R.
+function drawHeroStar(cx, cy, R) {
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+        const angle = -Math.PI / 2 + i * Math.PI / 5;
+        const rad = i % 2 === 0 ? R : R * 0.45;
+        const x = cx + Math.cos(angle) * rad, y = cy + Math.sin(angle) * rad;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+}
+
 function drawUnit(u) {
     if (!isOnScreen(u.x, u.y, u.radius + 30)) return;
     const r = u.radius;
@@ -3265,6 +3280,21 @@ function drawUnit(u) {
         ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0, 0, barW, 4);
         ctx.fillStyle = u.hp / u.maxHp > 0.3 ? '#5ac25a' : '#c25a3a';
         ctx.fillRect(0, 0, barW * Math.max(0, u.hp / u.maxHp), 4);
+        ctx.restore();
+    }
+
+    // Hero-track badge: a small gold star over any player unit that started on level 1 and has
+    // survived into a later one -- the only units that can actually become a Hero at the end of
+    // level 5 (see heroCount in the submit handler, which counts originLevel === 1 exactly). A
+    // unit bought fresh in level 2+ can rack up plenty of kills and never earn this, so this is
+    // the specific "worth protecting for a hero" signal, not a generic "not brand new" marker.
+    // Skipped on level 1 itself, where the whole army already qualifies and a star on every unit
+    // would just be noise.
+    if (u.side === playerSide && currentLevel > 1 && u.originLevel === 1 && !SIEGE_UNIT_TYPES.has(u.type)) {
+        ctx.save();
+        ctx.fillStyle = '#ffd85c'; ctx.strokeStyle = '#7a5a1a'; ctx.lineWidth = 1;
+        drawHeroStar(0, -r - 12 - (u.hp < u.maxHp ? 8 : 0), 5);
+        ctx.fill(); ctx.stroke();
         ctx.restore();
     }
 
