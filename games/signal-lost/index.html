@@ -20,6 +20,23 @@
     <meta name="twitter:title" content="Signal Lost">
     <meta name="twitter:description" content="Crash-landed on a hostile world, fight across an open frontier, a labyrinthine cave, and a mountain trail to repair your ship and escape. Free browser action RPG, permadeath.">
     <meta name="twitter:image" content="https://grnmtngames.com/assets/screenshots/overworld.jpg">
+
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "VideoGame",
+        "name": "Signal Lost",
+        "description": "Crash-landed on a hostile world, fight across an open frontier, a labyrinthine cave, and a mountain trail to repair your ship and escape. Free browser action RPG with permadeath.",
+        "url": "https://grnmtngames.com/games/signal-lost/index.html",
+        "image": "https://grnmtngames.com/assets/screenshots/overworld.jpg",
+        "genre": "Action RPG",
+        "gamePlatform": "Web Browser",
+        "applicationCategory": "Game",
+        "operatingSystem": "Any",
+        "publisher": { "@type": "Organization", "name": "Green Mountain Video Games", "url": "https://grnmtngames.com/" },
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+    }
+    </script>
     <style>
         * {
             box-sizing: border-box;
@@ -235,7 +252,7 @@
             overflow-y: auto;
             padding: 20px 16px;
         }
-        #game-over-screen h1 { font-size: 44px; margin-bottom: 10px; letter-spacing: 2px; color: #ef4444; text-shadow: 0 0 12px rgba(239,68,68,0.6); }
+        #game-over-screen h2 { font-size: 44px; margin-bottom: 10px; letter-spacing: 2px; color: #ef4444; text-shadow: 0 0 12px rgba(239,68,68,0.6); }
         #game-over-screen p { color: #fff; font-size: 15px; margin-bottom: 20px; }
 
         #intro-screen {
@@ -275,7 +292,7 @@
             padding: 20px;
         }
         #controls-overlay.show { display: flex; }
-        #controls-overlay h1 { font-size: 26px; margin-bottom: 18px; letter-spacing: 2px; color: #67e8f9; text-shadow: 0 0 12px rgba(103,232,249,0.6); }
+        #controls-overlay h2 { font-size: 26px; margin-bottom: 18px; letter-spacing: 2px; color: #67e8f9; text-shadow: 0 0 12px rgba(103,232,249,0.6); }
         #controls-overlay .controls-list { text-align: left; font-size: 15px; line-height: 2.1; max-width: 520px; }
         #controls-overlay .controls-list b { color: #fde047; }
         #controls-overlay-dismiss {
@@ -299,7 +316,7 @@
             padding: 40px 20px;
             overflow-y: auto;
         }
-        #log-screen h1 { font-size: 30px; letter-spacing: 3px; color: #67e8f9; text-shadow: 0 0 12px rgba(103,232,249,0.6); margin-bottom: 4px; }
+        #log-screen h2 { font-size: 30px; letter-spacing: 3px; color: #67e8f9; text-shadow: 0 0 12px rgba(103,232,249,0.6); margin-bottom: 4px; }
         #log-screen .log-subtitle { font-size: 12px; color: #7b8c9a; margin-bottom: 22px; }
         .log-section-title { font-size: 13px; letter-spacing: 2px; color: #da1; text-transform: uppercase; border-bottom: 1px solid #313d27; padding-bottom: 4px; margin: 18px 0 10px; width: 100%; max-width: 600px; }
         .log-entries { width: 100%; max-width: 600px; text-align: left; }
@@ -349,7 +366,7 @@
             overflow-y: auto;
             padding: 20px 16px;
         }
-        #victory-screen h1 { font-size: 44px; margin-bottom: 10px; letter-spacing: 2px; color: #4ade80; text-shadow: 0 0 14px rgba(74,222,128,0.7); }
+        #victory-screen h2 { font-size: 44px; margin-bottom: 10px; letter-spacing: 2px; color: #4ade80; text-shadow: 0 0 14px rgba(74,222,128,0.7); }
         #victory-screen p { color: #fff; font-size: 15px; max-width: 640px; margin-bottom: 20px; }
         #vic-player-name-input {
             background: #111; color: #fff; border: 1px solid #444; border-radius: 3px;
@@ -368,7 +385,7 @@
         }
         #vic-leaderboard-btn:hover, #vic-restart-btn:hover { background: #fde047; }
         @media (max-width: 620px) {
-            #victory-screen h1 { font-size: 30px; }
+            #victory-screen h2 { font-size: 30px; }
             #victory-screen p { font-size: 13px; }
             #vic-stats { gap: 16px !important; }
             #vic-player-name-input { width: 120px; }
@@ -444,7 +461,7 @@
         /* Death/leaderboard screen: the side-by-side 260px leaderboard columns and large
            title overflow a narrow viewport, so stack and shrink them below a breakpoint. */
         @media (max-width: 620px) {
-            #game-over-screen h1 { font-size: 30px; }
+            #game-over-screen h2 { font-size: 30px; }
             #game-over-screen p { font-size: 13px; }
             #go-stats { gap: 16px !important; }
             .go-stat-value { font-size: 18px; }
@@ -489,7 +506,7 @@
 
     <!-- Survivor Log journal, viewable anytime -->
     <div id="log-screen">
-        <h1>SURVIVOR LOG</h1>
+        <h2>SURVIVOR LOG</h2>
         <p class="log-subtitle">Six parts stand between this wreck and a working ship. Three are out there in the world; three will have to be taken from whatever's guarding them.</p>
 
         <div class="log-section-title">Ship Components</div>
@@ -511,7 +528,7 @@
          player starts their first survival run, so they don't have to open the menu or
          learn the controls by trial and error. -->
     <div id="controls-overlay">
-        <h1>SURVIVAL BRIEFING: CONTROLS</h1>
+        <h2>SURVIVAL BRIEFING: CONTROLS</h2>
         <div class="controls-list" id="controls-list-desktop">
             <div><b>WASD</b> &mdash; Move</div>
             <div><b>Left Click / F</b> &mdash; Blade Swipe</div>
@@ -538,7 +555,7 @@
 
     <!-- Permadeath Screen Overlay (also reused as the standalone leaderboard viewer) -->
     <div id="game-over-screen">
-        <h1 id="go-title">VITAL SIGNS LOST</h1>
+        <h2 id="go-title">VITAL SIGNS LOST</h2>
         <p id="go-subtitle">Your suit's life support has failed. This hostile world claims another survivor. Your run is now part of the permanent record.</p>
         <div id="go-stats" style="display: flex; gap: 30px; margin-bottom: 18px;">
             <div>SCORE<br><span id="go-score" class="go-stat-value" style="color:#eab308;">0</span></div>
@@ -566,7 +583,7 @@
 
     <!-- Victory screen: shown when the final boss is defeated, distinct from the death screen -->
     <div id="victory-screen">
-        <h1>SIGNAL RESTORED</h1>
+        <h2>SIGNAL RESTORED</h2>
         <p>The Abyssal Harbinger falls silent. With every part refitted, your ship's engines
            spin up for the first time in longer than you can remember. The sky opens above you.</p>
         <div id="vic-stats" style="display: flex; gap: 30px; margin-bottom: 18px;">
@@ -935,7 +952,7 @@ const player = {
     critChance: 0.05, critMultiplier: 1.8, goldFindMult: 1.0,
     isDashing: false, dashTimer: 0, dashCooldown: 0,
     dashSwingWindow: 0, spinAttackCooldown: 0, spinVisualTimer: 0,
-    hasAncientSword: false, hasAegisShield: false,
+    hasAncientSword: false, hasAegisShield: false, hasFullRelicUpgrade: false,
     zoneTransitionCooldown: 0
 };
 
@@ -1001,6 +1018,9 @@ const RELIC_BUFFS = [
 let entities = createEmptyEntities();
 
 const runStats = { enemiesKilled: 0, relicsCollected: 0 };
+// 35 overworld + 15 labyrinth + 30 mountain -- collecting every relic across all three
+// zones in a single run permanently upgrades the ranged weapon (see fireSecondaryRangedWeapon).
+const TOTAL_RELICS_IN_GAME = 80;
 const bounty = { targetType: '', requiredCount: 0, currentCount: 0, rewardGold: 0, rewardXp: 0, zone: '' };
 const BOUNTY_TARGETS_BY_ZONE = {
     overworld: ['Xenoglob', 'Grix', 'Krogath', 'Vex'],
@@ -1520,7 +1540,7 @@ function init() {
     player.critChance = 0.05; player.critMultiplier = 1.8; player.goldFindMult = 1.0;
     player.isDashing = false; player.dashTimer = 0; player.dashCooldown = 0;
     player.dashSwingWindow = 0; player.spinAttackCooldown = 0; player.spinVisualTimer = 0;
-    player.hasAncientSword = false; player.hasAegisShield = false; player.boarded = false;
+    player.hasAncientSword = false; player.hasAegisShield = false; player.hasFullRelicUpgrade = false; player.boarded = false;
     recalcPlayerAtk();
     shipParts = { hull_plate: false, nav_chip: false, thruster_coil: false, fuel_regulator: false, ignition_core: false, reactor_core: false };
     endgameTriggered = false;
@@ -1563,9 +1583,15 @@ function init() {
     }
 
     for(let i=0; i<35; i++) {
-        entities.relics.push({
-            x: 100 + Math.random() * (WORLD_WIDTH - 200), y: 100 + Math.random() * (WORLD_HEIGHT - 200), collected: false
-        });
+        // Reroll away from rocks -- a relic centered inside/near one would sit outside the
+        // player's reach once rock collision keeps them from ever walking close enough to it.
+        let x, y, tries = 0;
+        do {
+            x = 100 + Math.random() * (WORLD_WIDTH - 200);
+            y = 100 + Math.random() * (WORLD_HEIGHT - 200);
+            tries++;
+        } while (entities.rocks.some(r => Math.hypot(x - r.x, y - r.y) < r.radius + 20) && tries < 20);
+        entities.relics.push({ x, y, collected: false });
     }
 
     for (let i = 0; i < 2600; i++) {
@@ -1628,14 +1654,16 @@ function setupLabyrinth() {
         });
     });
 
-    const relicCells = [...labyrinth.openCells].sort(() => Math.random() - 0.5).slice(0, 15);
-    relicCells.forEach(cell => {
-        zEntities.relics.push({
-            x: cell.x + (Math.random() - 0.5) * LABY_CELL * 0.4,
-            y: cell.y + (Math.random() - 0.5) * LABY_CELL * 0.4,
-            collected: false
-        });
-    });
+    // Walk the full shuffled cell list (not just the first 15) so a cell whose jitter lands
+    // too close to a solid broken pillar is skipped rather than trapping the relic out of reach.
+    const relicCellPool = [...labyrinth.openCells].sort(() => Math.random() - 0.5);
+    for (const cell of relicCellPool) {
+        if (zEntities.relics.length >= 15) break;
+        const x = cell.x + (Math.random() - 0.5) * LABY_CELL * 0.4;
+        const y = cell.y + (Math.random() - 0.5) * LABY_CELL * 0.4;
+        if (zEntities.decorations.some(d => d.solid && Math.hypot(x - d.x, y - d.y) < d.radius + 20)) continue;
+        zEntities.relics.push({ x, y, collected: false });
+    }
 
     dungeonState.labyrinthOpenCells = labyrinth.openCells;
     labyrinth.openCells.forEach(cell => {
@@ -1695,10 +1723,13 @@ function setupMountainPath() {
     }
 
     for (let i = 0; i < 30; i++) {
+        // Also reroll away from the cliff-wall rocks just placed above -- same reachability
+        // concern as the overworld relics (see init()'s matching comment).
         let x, y, tries = 0;
         do {
             x = Math.random() * WORLD_WIDTH; y = Math.random() * WORLD_HEIGHT; tries++;
-        } while ((Math.hypot(x - base.x, y - base.y) < 220 || Math.hypot(x - peak.x, y - peak.y) < 220) && tries < 20);
+        } while ((Math.hypot(x - base.x, y - base.y) < 220 || Math.hypot(x - peak.x, y - peak.y) < 220
+            || zEntities.rocks.some(r => Math.hypot(x - r.x, y - r.y) < r.radius + 20)) && tries < 20);
         zEntities.relics.push({ x, y, collected: false });
     }
 
@@ -2020,7 +2051,7 @@ function findAssistTarget(originAngle, maxAngleDiff, maxDist) {
 
 function fireSecondaryRangedWeapon() {
     if (player.rangedCooldown > 0 || player.isShieldUp) return;
-    player.rangedCooldown = 22;
+    player.rangedCooldown = player.hasFullRelicUpgrade ? 13 : 22;
     AudioEngine.triggerRanged();
 
     let angle = currentAimAngle();
@@ -2029,10 +2060,11 @@ function fireSecondaryRangedWeapon() {
         if (target) angle = Math.atan2(target.y - player.y, target.x - player.x);
     }
     const daggerVel = 7.5;
+    const damage = player.hasFullRelicUpgrade ? Math.floor(player.rangedAtk * 1.75) : player.rangedAtk;
 
     entities.playerProjectiles.push({
         x: player.x, y: player.y, vx: Math.cos(angle) * daggerVel, vy: Math.sin(angle) * daggerVel,
-        radius: 3.5, damage: player.rangedAtk, life: 100
+        radius: 3.5, damage, life: 100, upgraded: player.hasFullRelicUpgrade
     });
 }
 
@@ -2447,6 +2479,15 @@ function update() {
                 AudioEngine.triggerRelic(); createParticles(relic.x, relic.y, '#e346ef', 12);
                 spawnFloatingText(relic.x, relic.y, buff.desc, '#e346ef', true);
                 addLog(`✨ Alien Relic grants ${buff.name} (${buff.desc})!`, false);
+
+                if (!player.hasFullRelicUpgrade && runStats.relicsCollected >= TOTAL_RELICS_IN_GAME) {
+                    player.hasFullRelicUpgrade = true;
+                    triggerScreenShake(16);
+                    AudioEngine.triggerLevelUp();
+                    addLog('✨ EVERY RELIC RECOVERED! Your laser has been permanently overcharged!', true);
+                    spawnFloatingText(player.x, player.y - 40, 'LASER OVERCHARGED', '#e346ef', true);
+                    createParticles(player.x, player.y, '#e346ef', 24);
+                }
             }
         }
     });
@@ -2900,7 +2941,7 @@ async function fetchGlobalTop(daily) {
 }
 
 async function submitGlobalScore(name, score, kills, relics, won) {
-    if (!isGlobalLeaderboardEnabled()) return false;
+    if (!isGlobalLeaderboardEnabled()) return { ok: false };
     try {
         const res = await fetch(`${LEADERBOARD_CONFIG.SUPABASE_URL}/rest/v1/scores`, {
             method: 'POST',
@@ -2912,8 +2953,13 @@ async function submitGlobalScore(name, score, kills, relics, won) {
             },
             body: JSON.stringify({ player_name: name, score, enemies_killed: kills, relics_collected: relics, victory: !!won })
         });
-        return res.ok;
-    } catch(e) { return false; }
+        if (res.ok) return { ok: true };
+        // Surface the actual rejection reason (e.g. a CHECK constraint violation) instead of
+        // treating every non-2xx as a generic "unreachable" -- these have very different fixes.
+        let reason = '';
+        try { reason = (await res.json()).message || ''; } catch(e) {}
+        return { ok: false, reason };
+    } catch(e) { return { ok: false, reason: '' }; }
 }
 
 function escapeHtml(s) {
@@ -2955,8 +3001,12 @@ function submitRunScore() {
     refreshLeaderboardPanels();
 
     if (isGlobalLeaderboardEnabled()) {
-        submitGlobalScore(name, entry.score, entry.kills, entry.relics, entry.won).then(ok => {
-            statusEl.innerText = ok ? 'Submitted to the global leaderboard!' : 'Global leaderboard unreachable (your browser or an extension may be blocking it — check ad-blocker/tracker-protection settings) — saved locally only.';
+        submitGlobalScore(name, entry.score, entry.kills, entry.relics, entry.won).then(result => {
+            statusEl.innerText = result.ok
+                ? 'Submitted to the global leaderboard!'
+                : result.reason
+                    ? `Global leaderboard rejected the submission (${result.reason}) — saved locally only.`
+                    : 'Global leaderboard unreachable (your browser or an extension may be blocking it — check ad-blocker/tracker-protection settings) — saved locally only.';
             refreshLeaderboardPanels();
         });
     }
@@ -3201,8 +3251,12 @@ function submitVictoryScore() {
     statusEl.innerText = isGlobalLeaderboardEnabled() ? 'Saved locally. Submitting to global leaderboard...' : 'Saved to your local leaderboard.';
 
     if (isGlobalLeaderboardEnabled()) {
-        submitGlobalScore(name, entry.score, entry.kills, entry.relics, entry.won).then(ok => {
-            statusEl.innerText = ok ? 'Submitted to the global leaderboard!' : 'Global leaderboard unreachable (your browser or an extension may be blocking it — check ad-blocker/tracker-protection settings) — saved locally only.';
+        submitGlobalScore(name, entry.score, entry.kills, entry.relics, entry.won).then(result => {
+            statusEl.innerText = result.ok
+                ? 'Submitted to the global leaderboard!'
+                : result.reason
+                    ? `Global leaderboard rejected the submission (${result.reason}) — saved locally only.`
+                    : 'Global leaderboard unreachable (your browser or an extension may be blocking it — check ad-blocker/tracker-protection settings) — saved locally only.';
         });
     }
 }
@@ -3870,9 +3924,12 @@ function drawPlayerProjectile(p) {
     ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(Math.atan2(p.vy, p.vx));
     // The wide translucent stroke below is the glow -- no shadowBlur needed (and it's slow
     // enough on Firefox, multiplied across every projectile in flight, to be worth avoiding).
-    ctx.strokeStyle = 'rgba(34, 211, 238, 0.45)'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+    // The overcharged (all-relics) laser reuses the relic's signature magenta as a visual callback.
+    const glow = p.upgraded ? 'rgba(227, 70, 239, 0.5)' : 'rgba(34, 211, 238, 0.45)';
+    const core = p.upgraded ? '#fdf4ff' : '#f0fdff';
+    ctx.strokeStyle = glow; ctx.lineWidth = p.upgraded ? 5 : 4; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(-9, 0); ctx.lineTo(7, 0); ctx.stroke();
-    ctx.strokeStyle = '#f0fdff'; ctx.lineWidth = 1.6;
+    ctx.strokeStyle = core; ctx.lineWidth = p.upgraded ? 2 : 1.6;
     ctx.beginPath(); ctx.moveTo(-9, 0); ctx.lineTo(7, 0); ctx.stroke();
     ctx.restore();
 }
@@ -4644,7 +4701,6 @@ function draw() {
     entities.trees.forEach(drawTreeShadow);
 
     entities.ponds.forEach(p => drawSceneryDetails(p, 'pond'));
-    entities.relics.forEach(drawRelic);
     entities.loot.forEach(drawLoot);
     entities.rocks.forEach(r => drawSceneryDetails(r, 'rock'));
     entities.wildlife.forEach(w => drawSceneryDetails(w, 'wildlife'));
@@ -4654,6 +4710,10 @@ function draw() {
     if (!player.boarded) drawPlayer();
 
     entities.trees.forEach(drawTree);
+    // Relics draw after tree canopies (which paint over everything below them by design)
+    // so a relic that spawned near a tree is never fully hidden -- it's still collectible
+    // either way, but a hidden one is nearly impossible to find for a 80/80 completionist run.
+    entities.relics.forEach(drawRelic);
     
     entities.particles.forEach(p => {
         ctx.save(); ctx.globalAlpha = p.alpha; ctx.fillStyle = p.color;

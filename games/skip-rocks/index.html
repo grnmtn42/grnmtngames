@@ -21,8 +21,33 @@
     <meta name="twitter:description" content="Skip stones across a lake from a first-person view. Drag to throw, chase your best skip count, and unwind to a natural soundscape of crickets and frogs across rotating scenes.">
     <meta name="twitter:image" content="https://grnmtngames.com/assets/screenshots/skiprocks-dawn.jpg">
 
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "VideoGame",
+        "name": "Skip Rocks",
+        "description": "Skip stones across a lake from a first-person view. Drag to throw, chase your best skip count, and unwind to a natural soundscape of crickets and frogs across rotating scenes.",
+        "url": "https://grnmtngames.com/games/skip-rocks/index.html",
+        "image": "https://grnmtngames.com/assets/screenshots/skiprocks-dawn.jpg",
+        "genre": "Casual",
+        "gamePlatform": "Web Browser",
+        "applicationCategory": "Game",
+        "operatingSystem": "Any",
+        "publisher": { "@type": "Organization", "name": "Green Mountain Video Games", "url": "https://grnmtngames.com/" },
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+    }
+    </script>
+
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        /* This game has no title-card moment (it drops straight into play by design), so there's
+           nowhere to put a visible page title without disturbing that minimal feel -- a visually-
+           hidden h1 still gives crawlers/screen readers the one real heading every page should
+           have, without changing anything on screen. */
+        .sr-only {
+            position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+            overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+        }
         html, body {
             width: 100vw; height: 100vh;
             overflow: hidden;
@@ -95,6 +120,7 @@
 <body>
 
 <div id="game-container">
+    <h1 class="sr-only">Skip Rocks</h1>
     <canvas id="gameCanvas"></canvas>
     <div id="hud">SKIPS <span id="hud-skips">0</span><br>BEST <span class="best" id="hud-best">0</span></div>
     <div id="drag-hint">drag to throw</div>
